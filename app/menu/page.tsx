@@ -45,7 +45,7 @@ export default async function MenuPage() {
       <main>
         <section className="fm-top">
           <div className="wrap">
-            <Link className="fm-back" href="/">
+            <Link className="fm-back" href="/#menu">
               <svg viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 5l-7 7 7 7" />
               </svg>

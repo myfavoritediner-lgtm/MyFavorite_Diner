@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import type { MenuData } from '@/lib/types';
 import { openLightbox } from '@/components/site/lightbox-store';
 import { canRenderImage } from '@/lib/images';
@@ -414,7 +415,7 @@ export default function Menu({ menu }: { menu: MenuData }) {
 
         <div className="menu-foot">
           <p className="menu-note">Swipe to see more · Takeaway available</p>
-          <a className="btn" href="/menu">
+          <Link className="btn" href="/menu">
             See the Full Menu
             <svg viewBox="0 0 24 24" aria-hidden="true" style={{ width: 18, height: 18 }}>
               <path
@@ -426,7 +427,7 @@ export default function Menu({ menu }: { menu: MenuData }) {
                 strokeLinejoin="round"
               />
             </svg>
-          </a>
+          </Link>
         </div>
       </div>
     </section>
