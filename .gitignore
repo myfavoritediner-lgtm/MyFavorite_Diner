@@ -1,0 +1,35 @@
+node_modules/
+.next/
+out/
+build/
+.DS_Store
+
+# env files — never commit these
+.env
+.env.local
+.env*.local
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# vercel
+.vercel
+
+# AI coding-assistant files (regenerated only when an agent runs next dev)
+AGENTS.md
+CLAUDE.md
+.claude/
+.cursor/
+.aider*
+.github/copilot-instructions.md
+
+# Original photography and printed-menu sources.
+# Not used at runtime — the site serves the optimised copies in
+# public/menu/. Kept out of git so clones and deploys stay small.
+/menu/

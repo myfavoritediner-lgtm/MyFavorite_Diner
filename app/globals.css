@@ -1,0 +1,1723 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =====================================================================
+   My Favorite Diner — theme, layout and effects
+   Colour tokens live in :root below. Change them once, site-wide.
+   ===================================================================== */
+
+:root{
+    --ink:#141821;
+    --ink-2:#1c2230;
+    --cream:#FFF4E0;
+    /* the page colour — the same warm paper as the printed menu */
+    --paper:#FDF2E1;
+    /* a hair deeper, for sections that need to separate from the paper */
+    --paper-2:#F7E8D2;
+    --red:#E23B2E;
+    --red-dark:#B32419;
+    --yellow:#FFC22C;
+    --cyan:#2FE3F5;
+    --text:#FFF4E0;
+    --text-soft:#C9C2B4;
+    --text-dark:#1B202B;
+    --text-dark-soft:#5A6273;
+    --script:var(--font-script),cursive;
+    --slab:var(--font-slab),Georgia,serif;
+    --cond:var(--font-cond),Impact,sans-serif;
+    --body:var(--font-body),system-ui,sans-serif;
+    --ease:cubic-bezier(.22,.61,.36,1);
+    --ease-out:cubic-bezier(.16,1,.3,1);
+    --bounce:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--paper);color:var(--text-dark);
+    font-family:var(--body);font-size:16px;line-height:1.65;font-weight:400;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  /* The two sections that stay dark, so the neon still has night to glow in.
+     Anything inside them goes back to cream type. */
+  .club,footer,.intro{color:var(--text)}
+  ::selection{background:var(--yellow);color:var(--text-dark)}
+  a{color:inherit;text-decoration:none}
+  img{display:block;max-width:100%}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+  .section{padding:100px 0;position:relative}
+
+  .kicker{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:var(--cond);font-size:14px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--red-dark);
+  }
+  .kicker::before{content:"";width:26px;height:3px;background:var(--yellow);display:block}
+  /* on the dark sections it goes back to neon yellow */
+  .club .kicker,footer .kicker{color:var(--yellow)}
+  .club .kicker::before,footer .kicker::before{background:var(--red)}
+  h1,h2,h3{font-family:var(--slab);font-weight:400;line-height:1.05}
+
+  .neon-y{
+    color:var(--yellow);
+    text-shadow:0 0 6px rgba(255,194,44,.9),0 0 22px rgba(255,194,44,.55),0 0 46px rgba(255,140,20,.35);
+  }
+  .flicker{animation:flicker 6s infinite steps(1)}
+  @keyframes flicker{
+    0%,96%,100%{opacity:1}
+    97%{opacity:.55}
+    98%{opacity:1}
+    99%{opacity:.7}
+  }
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:10px;
+    font-family:var(--cond);font-size:16px;letter-spacing:.14em;text-transform:uppercase;
+    padding:17px 36px;cursor:pointer;border:0;position:relative;
+    background:var(--red);color:#fff;border-radius:999px;
+    box-shadow:0 6px 0 var(--red-dark), 0 14px 30px -12px rgba(226,59,46,.8);
+    transition:transform .18s var(--ease), box-shadow .18s var(--ease), background .25s;
+  }
+  .btn:hover{transform:translateY(-3px);box-shadow:0 9px 0 var(--red-dark), 0 20px 40px -14px rgba(226,59,46,.9)}
+  .btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--red-dark)}
+  .btn:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
+  .btn.yellow{background:var(--yellow);color:var(--text-dark);box-shadow:0 6px 0 #C68D0C,0 14px 30px -12px rgba(255,194,44,.7)}
+  .btn.yellow:hover{box-shadow:0 9px 0 #C68D0C,0 20px 40px -14px rgba(255,194,44,.85)}
+  .btn.yellow:active{box-shadow:0 2px 0 #C68D0C}
+  /* On paper an outlined button reads better as ink than as a neon tube. */
+  .btn.ghost{background:transparent;color:var(--text-dark);border:3px solid var(--text-dark);
+    box-shadow:4px 4px 0 var(--red)}
+  .btn.ghost:hover{background:var(--text-dark);color:var(--cream);box-shadow:2px 2px 0 var(--red)}
+  /* inside the dark sections it keeps the neon outline */
+  .club .btn.ghost,footer .btn.ghost{
+    color:#fff;border-color:var(--cyan);
+    box-shadow:inset 0 0 22px rgba(47,227,245,.16),0 0 22px rgba(47,227,245,.3);
+  }
+  .club .btn.ghost:hover,footer .btn.ghost:hover{
+    background:var(--cyan);color:var(--text-dark);
+  }
+
+  .checker{height:22px;background:repeating-conic-gradient(var(--cream) 0% 25%, var(--ink) 0% 50%) 0 0/22px 22px}
+  .checker.red{background:repeating-conic-gradient(var(--red) 0% 25%, var(--cream) 0% 50%) 0 0/22px 22px}
+
+
+  .progress{position:fixed;top:0;left:0;height:4px;width:100%;z-index:200;pointer-events:none}
+  .progress i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--yellow),var(--red));
+    transform:scaleX(0);transform-origin:left;box-shadow:0 0 14px rgba(255,194,44,.8)}
+
+  /* Scoped to #head, never the bare <header> tag — a bare selector here
+     also catches any <header> used inside a section further down the page
+     and pins it to the top of the screen. */
+  #head{
+    position:fixed;top:0;left:0;right:0;z-index:100;
+    transition:background .35s var(--ease),box-shadow .35s var(--ease),transform .4s var(--ease);
+  }
+  /* The bar floats as its own white card with the cream page showing all
+     round it, so it separates from the page instead of merging into it. */
+  #head{background:transparent;padding:14px 16px}
+  #head.hidden{transform:translateY(-130%)}
+  .nav{
+    display:flex;align-items:center;justify-content:space-between;gap:20px;
+    height:70px;max-width:1160px;margin:0 auto;padding:0 14px 0 20px;
+    background:#fff;border-radius:999px;
+    border:2px solid var(--text-dark);
+    box-shadow:0 10px 26px -18px rgba(27,32,43,.55);
+    transition:box-shadow .35s var(--ease),transform .35s var(--ease);
+  }
+  #head.scrolled .nav{
+    box-shadow:0 14px 30px -16px rgba(27,32,43,.7);
+    transform:scale(.985);
+  }
+  /* The mark is the badge trimmed out of the client's logo, on a
+     transparent background — no blend-mode tricks, so it sits cleanly on
+     any colour. The name is set beside it in the site's own type. */
+  .brand{display:flex;align-items:center;gap:12px;flex-shrink:0;min-width:0}
+  .brand img{height:46px;width:auto;display:block}
+  .brand-txt{display:flex;flex-direction:column;line-height:1;min-width:0}
+  .brand-txt b{
+    font-family:var(--cond);font-weight:400;font-size:20px;letter-spacing:.03em;
+    text-transform:uppercase;color:var(--text-dark);white-space:nowrap;
+  }
+  .brand-txt i{
+    font-style:normal;font-family:var(--cond);font-size:10.5px;
+    letter-spacing:.3em;text-transform:uppercase;color:var(--red);
+    margin-top:3px;white-space:nowrap;
+  }
+  .brand:hover .brand-txt b{color:var(--red)}
+
+  .logo-mark{display:flex;align-items:center;flex-shrink:0}
+  .logo-mark img{height:50px;width:auto;display:block}
+  footer .logo-mark img{mix-blend-mode:screen;filter:drop-shadow(0 0 10px rgba(255,194,44,.35))}
+
+  .logo{display:flex;flex-direction:column;line-height:.9}
+  .logo .l1{font-family:var(--script);font-size:26px;color:var(--red)}
+  .logo .l2{font-family:var(--cond);font-size:11px;letter-spacing:.34em;
+    text-transform:uppercase;color:var(--text-dark-soft)}
+  footer .logo .l1{color:var(--yellow)}
+  footer .logo .l2{color:var(--cyan)}
+  .nav-links{display:flex;gap:30px;list-style:none}
+  .nav-links a{
+    font-family:var(--cond);font-size:15px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--text-dark);position:relative;padding:6px 0;transition:color .25s;cursor:pointer;
+  }
+  .nav-links a::after{content:"";position:absolute;left:0;bottom:0;height:3px;width:0;
+    background:var(--red);transition:width .28s var(--ease)}
+  .nav-links a:hover{color:var(--red)}
+  .nav-links a:hover::after,.nav-links a.here::after{width:100%}
+  .burger{display:none;background:none;border:0;cursor:pointer;padding:8px}
+  .burger svg{width:30px;height:30px;stroke:var(--text-dark);stroke-width:2.2;fill:none}
+
+  /* ============ HERO — the real premises, after dark ============ */
+  /* Cream paper, the words on the left, the food cut out and standing on
+     the right — the same design as the phone, opened out into two columns. */
+  .hero{
+    position:relative;display:flex;align-items:center;overflow:hidden;
+    min-height:clamp(600px, 46vw, 820px);
+    padding:150px 0 60px;
+    background:var(--paper);color:var(--text-dark);
+  }
+  .hero-grid{
+    position:relative;z-index:3;
+    display:grid;grid-template-columns:1.02fr .98fr;gap:40px;align-items:center;
+  }
+  .desktop-only{display:block}
+  .mobile-only{display:none}
+
+  .hero-cut-wrapper{width:100%}
+  .hero-cut{
+    width:100%;height:auto;justify-self:end;
+    filter:drop-shadow(0 26px 22px rgba(27,32,43,.22));
+  }
+
+  .hero-copy{will-change:transform,opacity}
+  .hero h1{margin-bottom:12px}
+  /* the small red line above the big word */
+  .hero .h-kick{
+    display:block;font-family:var(--cond);color:var(--red);
+    font-size:clamp(15px,1.4vw,19px);letter-spacing:.26em;
+    text-transform:uppercase;margin-bottom:10px;
+  }
+  .hero .h-line{display:block;line-height:1}
+  .hero .h-a{
+    display:block;font-family:var(--cond);color:var(--text-dark);
+    font-size:clamp(56px,7.4vw,102px);line-height:.88;
+    text-transform:uppercase;letter-spacing:.005em;
+  }
+  .hero .h-b{
+    display:block;font-family:var(--script);color:var(--red);
+    font-size:clamp(42px,5.4vw,74px);line-height:1.04;margin-top:2px;
+  }
+  .hero-tail{
+    font-family:var(--script);color:var(--text-dark);
+    font-size:clamp(21px,2.3vw,30px);line-height:1.2;margin:0 0 14px;
+  }
+
+  /* dashes and arrowheads under the headline */
+  .orn{display:flex;align-items:center;gap:10px;margin:6px 0 16px}
+  .orn svg{width:60px;height:12px;stroke:var(--red);stroke-width:1.6;fill:none}
+  .orn i{
+    width:7px;height:7px;background:var(--red);flex-shrink:0;
+    transform:rotate(45deg);
+  }
+
+  .hero-sub{
+    font-size:clamp(16px,1.5vw,18.5px);line-height:1.75;
+    color:rgba(27,32,43,.72);max-width:36ch;margin:0 0 30px;
+  }
+  .hero-sub b{color:var(--text-dark);font-weight:600}
+
+  .hero-cta{display:flex;gap:14px;flex-wrap:wrap}
+  .btn.ghost-dark{
+    background:transparent;color:var(--red);border:2.5px solid var(--red);
+    box-shadow:none;
+  }
+  .btn.ghost-dark:hover{background:var(--red);color:#fff;box-shadow:none}
+
+  .hero-where{
+    display:flex;align-items:center;gap:9px;margin-top:28px;
+    font-family:var(--cond);font-size:13.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--text-dark-soft);
+  }
+  .hero-where svg{
+    width:17px;height:17px;stroke:var(--red);stroke-width:2;fill:none;flex-shrink:0;
+  }
+
+
+  /* ---- the diner, drawn at night — now in "Find us" ---- */
+  .diner-art{
+    width:100%;max-width:760px;height:auto;overflow:visible;
+  }
+
+  /* warm light filling the terrace */
+  .diner-art .da-halo{fill:rgba(255,194,44,.07)}
+
+  /* ---- depth: three layers drifting at their own rates ----
+     --sy comes from scroll, --mx/--my from the pointer. */
+  .diner-art{--sy:0;--mx:0;--my:0}
+  .diner-art .da-layer{
+    transition:transform .5s cubic-bezier(.16,1,.3,1);
+    will-change:transform;
+  }
+  .diner-art .da-layer.back{
+    transform:translate(calc(var(--mx) * -14px), calc(var(--sy) * 22px + var(--my) * -8px));
+  }
+  .diner-art .da-layer.mid{
+    transform:translate(calc(var(--mx) * -6px), calc(var(--sy) * 8px + var(--my) * -3px));
+  }
+  .diner-art .da-layer.front{
+    transform:translate(calc(var(--mx) * 12px), calc(var(--sy) * -16px + var(--my) * 6px));
+  }
+
+  /* ---- the neon switching on ----
+     Each lit thing starts dark and buzzes to life on its own delay. */
+  .diner-art .da-on{
+    opacity:0;
+    animation:neonOn .55s var(--ease-out) forwards;
+    animation-delay:var(--on,0s);
+  }
+  @keyframes neonOn{
+    0%{opacity:0}
+    30%{opacity:.9}
+    45%{opacity:.25}
+    60%{opacity:1}
+    72%{opacity:.5}
+    100%{opacity:1}
+  }
+  /* keep the looping animations these elements already had */
+  .diner-art .da-led.da-on{
+    animation:neonOn .55s var(--ease-out) forwards,
+              tubeBreathe 4.5s ease-in-out infinite 1.2s;
+  }
+  .diner-art .da-sign.da-on{
+    animation:neonOn .55s var(--ease-out) forwards,
+              signFlicker 7s infinite steps(1) 2s;
+  }
+  .diner-art .da-sway.da-on{
+    animation:neonOn .55s var(--ease-out) forwards,
+              sway 6s ease-in-out infinite;
+  }
+
+  /* people, kept quiet */
+  .diner-art .da-far,.diner-art .da-far *{
+    fill:none;stroke:var(--cream);stroke-width:1.6;
+    stroke-linecap:round;stroke-linejoin:round;opacity:.24;
+  }
+
+  /* ---- the blue LED strips along the fascia ---- */
+  .diner-art .da-led{
+    stroke:var(--cyan);stroke-width:3.4;stroke-linecap:round;fill:none;
+    filter:drop-shadow(0 0 5px rgba(47,227,245,.95))
+           drop-shadow(0 0 16px rgba(47,227,245,.6));
+    animation:tubeBreathe 4.5s ease-in-out infinite;
+  }
+  .diner-art .da-led.delay{animation-delay:2.2s}
+
+  /* ---- hanging lanterns ---- */
+  .diner-art .da-cord{stroke:var(--cream);stroke-width:1;opacity:.28;fill:none}
+  .diner-art .da-lamp{stroke:none}
+  .diner-art .da-lamp-ring{stroke-width:1.4;fill:none;opacity:.5}
+
+  /* each lantern swings from where its cord meets the roof */
+  .diner-art .da-sway{
+    transform-box:fill-box;transform-origin:50% 0%;
+    animation:sway 6s ease-in-out infinite;
+  }
+  @keyframes sway{
+    0%,100%{transform:rotate(-1.6deg)}
+    50%{transform:rotate(1.6deg)}
+  }
+  .diner-art .da-lantern{animation:bulbTwinkle 4s ease-in-out infinite}
+  @keyframes bulbTwinkle{0%,100%{opacity:1}50%{opacity:.6}}
+
+  /* ---- ceiling fans ---- */
+  .diner-art .da-fan-rod{stroke:var(--cream);stroke-width:2;opacity:.6;fill:none}
+  .diner-art .da-fan{
+    transform-box:fill-box;transform-origin:center;
+    animation:fanSpin 1.6s linear infinite;
+  }
+  @keyframes fanSpin{to{transform:rotate(360deg)}}
+  .diner-art .da-blade{
+    fill:rgba(255,244,224,.16);stroke:var(--cream);stroke-width:1;
+    stroke-opacity:.4;
+  }
+  .diner-art .da-fan-hub{fill:var(--cream);opacity:.55;stroke:none}
+
+  /* ---- steam off a fresh coffee ---- */
+  .diner-art .da-steam path{
+    fill:none;stroke:var(--cream);stroke-width:1.6;stroke-linecap:round;
+    opacity:0;animation:steam 3.6s ease-out infinite;
+  }
+  @keyframes steam{
+    0%{opacity:0;transform:translateY(6px) scaleY(.7)}
+    25%{opacity:.5}
+    100%{opacity:0;transform:translateY(-20px) scaleY(1.25)}
+  }
+
+  /* ---- a beer, quietly bubbling ---- */
+  .diner-art .da-beer{fill:rgba(255,194,44,.4);stroke:none}
+  .diner-art .da-bubbles circle{
+    fill:var(--cream);opacity:0;
+    animation:bubble 3s ease-in infinite;
+  }
+  @keyframes bubble{
+    0%{opacity:0;transform:translateY(0)}
+    20%{opacity:.7}
+    100%{opacity:0;transform:translateY(-9px)}
+  }
+
+  /* ---- moths round a lantern ---- */
+  .diner-art .da-moths{
+    transform-box:fill-box;transform-origin:center;
+    animation:mothOrbit 9s linear infinite;
+  }
+  @keyframes mothOrbit{to{transform:rotate(360deg)}}
+  .diner-art .da-moth{fill:var(--cream);opacity:.45}
+
+  /* ---- the cat, breathing ---- */
+  .diner-art .da-cat{
+    transform-box:fill-box;transform-origin:center;
+    animation:catBreathe 4.5s ease-in-out infinite;
+  }
+  @keyframes catBreathe{
+    0%,100%{transform:scale(1)}
+    50%{transform:scale(1.035)}
+  }
+  .diner-art .da-cat-body{fill:rgba(255,244,224,.5);stroke:none}
+  .diner-art .da-cat-ears,.diner-art .da-cat-tail{
+    fill:none;stroke:rgba(255,244,224,.5);stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round;
+  }
+
+
+  .diner-art .tone-g .da-lamp{fill:#4BD66A;
+    filter:drop-shadow(0 0 5px rgba(75,214,106,.9)) drop-shadow(0 0 13px rgba(75,214,106,.5))}
+  .diner-art .tone-g .da-lamp-ring{stroke:#4BD66A}
+  .diner-art .tone-r .da-lamp{fill:var(--red);
+    filter:drop-shadow(0 0 5px rgba(226,59,46,.9)) drop-shadow(0 0 13px rgba(226,59,46,.5))}
+  .diner-art .tone-r .da-lamp-ring{stroke:var(--red)}
+  .diner-art .tone-o .da-lamp{fill:#FF8A3D;
+    filter:drop-shadow(0 0 5px rgba(255,138,61,.9)) drop-shadow(0 0 13px rgba(255,138,61,.5))}
+  .diner-art .tone-o .da-lamp-ring{stroke:#FF8A3D}
+
+  /* ---- red pendants over the bar ---- */
+  .diner-art .da-pendant .da-shade{
+    fill:var(--red);stroke:none;opacity:.85;
+    filter:drop-shadow(0 4px 10px rgba(226,59,46,.5));
+  }
+
+  /* ---- the red seating ---- */
+  .diner-art .da-seat,.diner-art .da-back{
+    fill:rgba(226,59,46,.75);stroke:var(--cream);stroke-width:1.2;
+    stroke-opacity:.35;
+  }
+  .diner-art .da-legs{stroke:var(--cream);stroke-width:1.4;opacity:.4;fill:none}
+
+  /* ---- the standing menu banner ---- */
+  .diner-art .da-banner{
+    fill:rgba(255,244,224,.06);stroke:var(--cream);stroke-width:1.6;opacity:.75;
+  }
+  .diner-art .da-banner-text{
+    font-family:var(--script);font-size:9px;fill:var(--cream);
+    text-anchor:middle;opacity:.55;
+  }
+
+  /* line work */
+  .diner-art .da-line,.diner-art .da-line *{
+    fill:none;stroke:var(--cream);stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round;opacity:.78;
+  }
+  .diner-art .da-thin,.diner-art .da-thin *{
+    fill:none;stroke:var(--cream);stroke-width:1.1;
+    stroke-linecap:round;opacity:.34;
+  }
+
+  /* ---- the neon ---- */
+  /* ---- the logo sign ---- */
+  /* double yellow neon tube around a red face */
+  .diner-art .da-plate-outer{
+    fill:none;stroke:var(--yellow);stroke-width:4;
+    filter:drop-shadow(0 0 7px rgba(255,194,44,.95))
+           drop-shadow(0 0 22px rgba(255,194,44,.6));
+  }
+  .diner-art .da-plate-face{
+    fill:rgba(226,59,46,.85);stroke:none;
+  }
+  .diner-art .da-plate-inner{
+    fill:none;stroke:var(--yellow);stroke-width:2.2;opacity:.95;
+    filter:drop-shadow(0 0 5px rgba(255,194,44,.9));
+  }
+
+  /* the arrow shooting through the badge */
+  .diner-art .da-arrow path{
+    fill:none;stroke:var(--yellow);stroke-width:5;
+    stroke-linecap:round;stroke-linejoin:round;
+    filter:drop-shadow(0 0 6px rgba(255,194,44,.95))
+           drop-shadow(0 0 16px rgba(255,194,44,.55));
+  }
+  /* the little marquee bulbs along it */
+  .diner-art .da-arrow-bulbs circle{
+    fill:var(--red);stroke:#fff;stroke-width:1.2;
+    filter:drop-shadow(0 0 4px rgba(255,120,110,.9));
+  }
+  /* ...which chase each other, like a real marquee */
+  .diner-art .da-arrow-bulbs.chase circle{
+    animation:chase 1.5s ease-in-out infinite;
+  }
+  .diner-art .da-arrow-bulbs.chase circle:nth-child(2){animation-delay:.25s}
+  .diner-art .da-arrow-bulbs.chase circle:nth-child(3){animation-delay:.5s}
+  .diner-art .da-arrow-bulbs.chase.slow circle{animation-duration:2.1s}
+  @keyframes chase{
+    0%,100%{fill:var(--red);opacity:.55}
+    40%{fill:#FFF0B8;opacity:1}
+  }
+
+  /* the lettering — script, white, on its own baseline like the real sign */
+  .diner-art .da-logo-my,
+  .diner-art .da-logo-main,
+  .diner-art .da-logo-diner{
+    font-family:var(--script);fill:#fff;text-anchor:middle;
+    filter:drop-shadow(0 0 4px rgba(255,255,255,.85))
+           drop-shadow(0 0 13px rgba(255,194,44,.65));
+  }
+  .diner-art .da-logo-my{font-size:19px}
+  .diner-art .da-logo-main{font-size:38px}
+  .diner-art .da-logo-diner{font-size:30px}
+
+  /* "Bar and Grill" board */
+  .diner-art .da-sub-plate{
+    fill:rgba(20,24,33,.82);stroke:var(--yellow);stroke-width:2;
+    filter:drop-shadow(0 0 5px rgba(255,194,44,.75));
+  }
+  .diner-art .da-sign-sub{
+    font-family:var(--body);font-weight:600;font-size:12.5px;letter-spacing:.06em;
+    fill:var(--yellow);text-anchor:middle;
+    filter:drop-shadow(0 0 4px rgba(255,194,44,.8));
+  }
+  .diner-art .da-sign{animation:signFlicker 7s infinite steps(1)}
+  @keyframes signFlicker{
+    0%,92%,100%{opacity:1}
+    93%{opacity:.55}
+    94%{opacity:1}
+    96%{opacity:.7}
+  }
+
+  @keyframes tubeBreathe{0%,100%{opacity:1}50%{opacity:.72}}
+
+
+  .band{background:var(--red);overflow:hidden;position:relative}
+  .band-track{display:flex;width:max-content;will-change:transform}
+  .band-track span{
+    display:flex;align-items:center;gap:30px;white-space:nowrap;padding:16px 0;
+    font-family:var(--cond);font-size:22px;letter-spacing:.16em;text-transform:uppercase;color:#fff;
+  }
+  .band-track span i{width:9px;height:9px;background:var(--yellow);border-radius:50%;display:inline-block;flex-shrink:0}
+  .band-track span em{font-style:normal;color:var(--yellow);padding:0 30px 0 0}
+
+  .about{background:var(--paper);color:var(--text-dark);position:relative;overflow:hidden}
+
+  /* the script "welcome to" line above the heading */
+  .welcome{
+    display:inline-flex;align-items:baseline;gap:9px;
+    font-family:var(--script);font-size:24px;color:var(--red);line-height:1;
+  }
+  .welcome b{font-size:13px;color:var(--yellow);font-weight:400}
+
+  /* a rubber stamp, pressed into the paper in the corner */
+  .stamp{
+    position:absolute;right:-40px;bottom:34px;width:230px;height:230px;
+    pointer-events:none;z-index:1;
+    fill:none;stroke:var(--red);stroke-width:1.6;opacity:.13;
+    transform:rotate(-11deg);
+  }
+  .stamp text{
+    fill:var(--red);stroke:none;font-family:var(--cond);font-size:21px;
+    letter-spacing:.24em;
+  }
+  .stamp .stamp-mid{font-size:15px;letter-spacing:.16em}
+  .about-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.05fr .95fr;gap:70px;align-items:center}
+  .about h2{font-size:clamp(34px,4.8vw,58px);color:var(--text-dark);margin:10px 0 24px}
+  .about h2 em{font-family:var(--script);font-style:normal;color:var(--red);display:block;font-size:1.05em}
+  .about p{color:var(--text-dark-soft);margin-bottom:18px;max-width:56ch;font-size:17px}
+
+  /* the closing line — set apart so it lands as a sign-off */
+  .about .about-sign{
+    font-family:var(--script);font-size:clamp(21px,2.4vw,27px);
+    color:var(--red);line-height:1.35;margin:26px 0 14px;max-width:30ch;
+  }
+  .about .about-where{
+    display:flex;align-items:center;gap:9px;margin:0;
+    font-family:var(--cond);font-size:13.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--text-dark);
+  }
+  .about .about-where svg{
+    width:17px;height:17px;stroke:var(--red);stroke-width:2;fill:none;flex-shrink:0;
+  }
+  .about .kicker{color:var(--red-dark)}
+  .about .kicker::before{background:var(--yellow)}
+  .about-photo{position:relative}
+  .about-photo .shot{
+    aspect-ratio:4/5;overflow:hidden;border-radius:8px;border:8px solid #fff;
+    box-shadow:0 30px 60px -22px rgba(0,0,0,.4);transform:rotate(-2.5deg);
+    background:linear-gradient(150deg,#2a3040,#151a24);
+  }
+  .about-photo .shot img{width:100%;height:100%;object-fit:cover;will-change:transform}
+  .about-photo .tape{
+    position:absolute;top:-16px;left:50%;transform:translateX(-50%) rotate(-3deg);
+    width:130px;height:34px;background:rgba(255,194,44,.85);box-shadow:0 4px 12px rgba(0,0,0,.2);
+  }
+
+
+  .menu{background:var(--paper);color:var(--text-dark)}
+  .menu-head{text-align:center;max-width:760px;margin:0 auto 46px}
+  .menu-head .script{
+    display:block;font-family:var(--script);font-size:clamp(30px,4.4vw,46px);
+    color:var(--red);line-height:1;margin-bottom:2px;
+  }
+  .menu-head h2{
+    font-family:var(--cond);font-size:clamp(40px,6.4vw,74px);letter-spacing:.02em;
+    text-transform:uppercase;color:var(--red);margin:0 0 16px;line-height:.95;
+  }
+  /* checkerboard running out from either side of the title */
+  .menu-rule{
+    display:flex;align-items:center;gap:18px;margin:0 auto 16px;max-width:660px;
+  }
+  .menu-rule i{
+    flex:1;height:14px;border-radius:2px;
+    background:repeating-conic-gradient(var(--red) 0% 25%, #fff 0% 50%) 0 0/14px 14px;
+  }
+  .menu-head p{color:var(--text-dark-soft);font-size:17px}
+  /* ---- category bar: one line, scrolls sideways when it doesn't fit ---- */
+  .tabs-wrap{position:relative;margin-bottom:44px}
+  .tabs{
+    display:flex;gap:10px;
+    /* "safe center" centres the row when it fits, but falls back to the
+       start when it overflows — without it the first tab gets cut off */
+    justify-content:safe center;
+    flex-wrap:nowrap;overflow-x:auto;
+    scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    padding:5px 4px;scroll-padding:0 20px;
+  }
+  .tabs::-webkit-scrollbar{display:none}
+
+  .tab{
+    flex:0 0 auto;white-space:nowrap;scroll-snap-align:center;
+    display:inline-flex;align-items:center;gap:9px;
+    font-family:var(--cond);font-size:15px;letter-spacing:.14em;text-transform:uppercase;
+    padding:12px 24px;border-radius:999px;cursor:pointer;
+    background:#fff;color:var(--text-dark);border:3px solid var(--text-dark);
+    transition:transform .22s var(--ease),background .25s var(--ease),
+               color .25s var(--ease),box-shadow .22s var(--ease);
+  }
+  .tab svg{
+    width:21px;height:21px;flex-shrink:0;
+    transition:transform .35s var(--bounce),color .25s var(--ease);
+  }
+  .tab:hover{transform:translateY(-3px)}
+  .tab:hover svg{transform:scale(1.12) rotate(-6deg)}
+  .tab:active{transform:translateY(1px)}
+
+  .tab.active{
+    background:var(--red);color:#fff;border-color:var(--red-dark);
+    box-shadow:0 5px 0 var(--red-dark);
+    animation:tabPop .4s var(--bounce);
+  }
+  .tab.active svg{color:var(--yellow);transform:scale(1.1)}
+  @keyframes tabPop{
+    0%{transform:scale(.94)}
+    60%{transform:scale(1.05)}
+    100%{transform:scale(1)}
+  }
+  .tab:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
+
+  /* fade the row out at the edges so it reads as scrollable */
+  .tabs-wrap::before,.tabs-wrap::after{
+    content:"";position:absolute;top:0;bottom:0;width:34px;z-index:2;
+    pointer-events:none;opacity:0;transition:opacity .25s var(--ease);
+  }
+  .tabs-wrap::before{left:0;background:linear-gradient(90deg,var(--cream),transparent)}
+  .tabs-wrap::after{right:0;background:linear-gradient(270deg,var(--cream),transparent)}
+  .tabs-wrap.can-left::before{opacity:1}
+  .tabs-wrap.can-right::after{opacity:1}
+  /* ---- swipeable menu rail ---- */
+  .rail-wrap{position:relative}
+
+  .dishes{
+    display:flex;gap:20px;
+    overflow-x:auto;overflow-y:visible;
+    scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    padding:14px 2px 26px;
+  }
+  .dishes::-webkit-scrollbar{display:none}
+
+  .rail-arrow{
+    position:absolute;top:38%;z-index:5;
+    width:52px;height:52px;border-radius:50%;cursor:pointer;
+    background:var(--red);border:0;color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 5px 0 var(--red-dark),0 14px 26px -12px rgba(0,0,0,.45);
+    transition:transform .2s var(--ease),opacity .25s var(--ease),
+               box-shadow .2s var(--ease);
+  }
+  .rail-arrow svg{width:24px;height:24px;stroke:currentColor;stroke-width:2.6;fill:none}
+  .rail-arrow.left{left:-14px}
+  .rail-arrow.right{right:-14px}
+  .rail-arrow:hover:not(:disabled){transform:translateY(-2px);
+    box-shadow:0 7px 0 var(--red-dark),0 18px 30px -12px rgba(0,0,0,.5)}
+  .rail-arrow:active:not(:disabled){transform:translateY(3px);box-shadow:0 2px 0 var(--red-dark)}
+  .rail-arrow:disabled{opacity:0;pointer-events:none}
+  .rail-arrow:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
+
+  /* fade the cards out at each edge so the rail reads as continuing */
+  .rail-wrap::before,.rail-wrap::after{
+    content:"";position:absolute;top:0;bottom:22px;width:46px;z-index:3;
+    pointer-events:none;
+  }
+  .rail-wrap::before{left:-2px;background:linear-gradient(90deg,var(--cream),transparent)}
+  .rail-wrap::after{right:-2px;background:linear-gradient(270deg,var(--cream),transparent)}
+  /* ---- menu cards: outlined, centred, price pill (diner-poster style) ---- */
+  .card{
+    display:none;background:#fff;
+    border:2.5px solid var(--red);border-radius:20px;overflow:hidden;
+    text-align:center;position:relative;
+    flex:0 0 290px;scroll-snap-align:center;
+    box-shadow:0 10px 26px -18px rgba(27,32,43,.45);
+    /* --sc and --op are set from JS by how close the card is to the middle */
+    transform:scale(var(--sc,1)) translateY(var(--ty,0));
+    opacity:var(--op,1);
+    transition:transform .45s var(--ease-out),opacity .45s var(--ease-out),
+               box-shadow .3s var(--ease),border-color .3s var(--ease);
+  }
+  .card.show{display:flex;flex-direction:column;animation:pop .5s var(--bounce) both}
+  @keyframes pop{from{opacity:0;transform:scale(.9) translateY(22px)}to{opacity:1;transform:none}}
+  .card:hover{
+    --ty:-8px;--op:1;
+    border-color:var(--red-dark);
+    box-shadow:0 26px 40px -22px rgba(226,59,46,.55);
+  }
+
+  .card-img{
+    position:relative;aspect-ratio:4/3;overflow:hidden;cursor:zoom-in;
+    margin:10px 10px 0;border-radius:13px;
+    background:linear-gradient(150deg,#2b3242,#171d28);
+  }
+  .card-img img{width:100%;height:100%;object-fit:cover;
+    transition:transform .65s var(--ease)}
+  .card:hover .card-img img{transform:scale(1.08)}
+
+  .card-tag{
+    position:absolute;top:11px;left:11px;z-index:3;
+    font-family:var(--cond);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+    background:var(--yellow);color:var(--text-dark);padding:6px 12px;border-radius:999px;
+    box-shadow:0 3px 0 #C68D0C;
+  }
+
+  .card-body{
+    padding:20px 22px 22px;display:flex;flex-direction:column;flex:1;
+    align-items:center;
+  }
+  /* the item number, as printed on the paper menu */
+  .card-code{
+    font-family:var(--cond);font-size:15px;letter-spacing:.1em;
+    color:var(--cyan);display:block;margin-bottom:2px;
+    text-shadow:0 1px 0 rgba(27,32,43,.15);
+  }
+  .card h3{
+    font-family:var(--slab);font-size:20px;line-height:1.25;color:var(--red);
+    margin-bottom:9px;
+  }
+  .card p{
+    font-size:14px;color:var(--text-dark-soft);line-height:1.65;
+    margin:0 0 18px;max-width:34ch;
+  }
+
+  /* price sits at the bottom of every card, like a button would */
+  .card .price{
+    margin-top:auto;display:inline-block;
+    font-family:var(--cond);font-size:18px;letter-spacing:.1em;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+    background:var(--red);color:#fff;
+    padding:12px 30px;border-radius:999px;
+    box-shadow:0 4px 0 var(--red-dark);
+    transition:transform .2s var(--ease),box-shadow .2s var(--ease);
+  }
+  .card:hover .price{transform:translateY(-2px);box-shadow:0 6px 0 var(--red-dark)}
+  .menu-empty{
+    text-align:center;color:var(--text-dark-soft);font-size:16px;
+    border:2.5px dashed rgba(27,32,43,.2);border-radius:20px;
+    padding:46px 24px;max-width:560px;margin:0 auto;
+  }
+  /* Small print under a section, e.g. "served with shoestring fries". */
+  .section-note{
+    text-align:center;margin:-8px auto 24px;max-width:560px;
+    font-family:var(--cond);font-size:15px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--red);
+  }
+  .menu-foot{margin-top:38px;text-align:center}
+  .menu-note{
+    font-family:var(--cond);font-size:16px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--text-dark-soft);margin-bottom:14px;
+  }
+
+  /* the features band gets the slightly deeper paper so it separates */
+  /* =====================================================================
+     THE FULL MENU PAGE  (/menu)
+     ===================================================================== */
+  .fm-top{padding:150px 0 54px;text-align:center;background:var(--paper)}
+  .fm-back{
+    display:inline-flex;align-items:center;gap:7px;margin-bottom:26px;
+    font-family:var(--cond);font-size:13.5px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--text-dark-soft);transition:color .2s;
+  }
+  .fm-back svg{width:16px;height:16px;stroke:currentColor;stroke-width:2.4;fill:none}
+  .fm-back:hover{color:var(--red)}
+  .fm-top .script{
+    display:block;font-family:var(--script);font-size:clamp(26px,3.6vw,40px);
+    color:var(--red);line-height:1;margin-bottom:4px;
+  }
+  .fm-top h1{
+    font-family:var(--cond);font-size:clamp(42px,7vw,86px);line-height:.95;
+    text-transform:uppercase;color:var(--text-dark);margin:0 0 16px;
+  }
+  .fm-top > .wrap > p{
+    max-width:52ch;margin:0 auto;color:var(--text-dark-soft);font-size:16.5px;
+  }
+  .fm-cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:30px}
+
+  /* The sticky jump bar sits on its own white surface with an ink rule
+     under it — on cream it was the same value as the page and vanished. */
+  .jump-bar{
+    position:sticky;top:88px;z-index:40;padding:13px 0;
+    background:rgba(255,255,255,.96);backdrop-filter:blur(10px);
+    border-top:2px solid var(--text-dark);
+    border-bottom:3px solid var(--text-dark);
+    box-shadow:0 12px 22px -20px rgba(27,32,43,.7);
+  }
+  .jump-row{
+    display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;
+    justify-content:safe center;
+  }
+  .jump-row::-webkit-scrollbar{display:none}
+  .jump{
+    flex-shrink:0;font-family:var(--cond);font-size:13px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--text-dark);
+    background:var(--paper);border:2px solid var(--text-dark);
+    padding:9px 16px;border-radius:999px;white-space:nowrap;
+    transition:color .2s,background .2s,transform .2s var(--ease);
+  }
+  .jump:hover{background:var(--yellow);transform:translateY(-2px)}
+  .jump.on{background:var(--red);border-color:var(--red-dark);color:#fff}
+
+  .fm-body{padding:8px 0 90px}
+
+  /* ---- course title: the four chapters of the menu ---- */
+  .fm-group{padding-top:26px}
+  .fm-group-head{text-align:center;margin:58px 0 8px}
+  .fm-group-head h2{
+    font-family:var(--cond);font-size:clamp(26px,3.6vw,40px);line-height:1;
+    text-transform:uppercase;color:var(--text-dark);margin:0;
+  }
+  .fm-group-head p{
+    font-family:var(--script);font-size:18px;color:var(--red);margin:6px 0 0;
+  }
+  .fm-group-line{
+    display:block;height:12px;margin:16px auto 0;max-width:420px;
+    background:repeating-conic-gradient(
+      var(--red) 0% 25%, var(--paper) 0% 50%) 0 0/12px 12px;
+  }
+
+  /* ---- section heading: a red plate, like the printed menu ---- */
+  .fm-sec{padding-top:40px;scroll-margin-top:158px}
+  .fm-ribbon{text-align:center;margin:0 0 16px}
+  .fm-ribbon span{
+    display:inline-block;
+    background:var(--red);color:#fff;
+    font-family:var(--cond);font-size:clamp(20px,2.6vw,28px);line-height:1;
+    letter-spacing:.06em;text-transform:uppercase;
+    padding:14px 34px;border-radius:8px;
+    border:3px solid var(--text-dark);
+    box-shadow:5px 5px 0 var(--text-dark);
+  }
+
+  .fm-note{
+    font-family:var(--cond);font-size:14px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--text-dark-soft);
+    text-align:center;margin-bottom:18px;
+  }
+
+  /* two columns of dishes, with dotted leaders to the price */
+  .fm-list{list-style:none;columns:2;column-gap:52px}
+  .fm-item{
+    break-inside:avoid;margin-bottom:26px;
+    display:flex;gap:15px;align-items:flex-start;
+  }
+  /* Each dish's own photograph. Small on purpose: the page is a price list
+     you read, not a gallery you browse — the picture is there to tell you
+     what the dish is, and the lightbox is there when you want a proper
+     look. The empty span keeps names aligned in rows where one dish has no
+     photo yet. */
+  .fm-thumb{
+    flex:0 0 96px;width:96px;aspect-ratio:4/3;overflow:hidden;padding:0;
+    border-radius:12px;border:2.5px solid var(--text-dark);background:var(--paper-2);
+    cursor:zoom-in;transition:transform .3s var(--ease),box-shadow .3s var(--ease);
+    margin-top:3px;
+  }
+  .fm-thumb:hover{transform:translateY(-3px);box-shadow:0 8px 18px -10px rgba(27,32,43,.7)}
+  .fm-thumb:focus-visible{outline:3px solid var(--red);outline-offset:3px}
+  .fm-thumb-none{cursor:default;border-style:dashed;border-color:rgba(27,32,43,.25)}
+  .fm-text{flex:1;min-width:0}
+  .fm-line{display:flex;align-items:baseline;gap:8px}
+  .fm-name{
+    font-family:var(--slab);font-size:17px;line-height:1.3;color:var(--text-dark);
+  }
+  .fm-tag{
+    font-style:normal;font-family:var(--cond);font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:#fff;background:var(--red);
+    padding:3px 8px;border-radius:999px;margin-left:9px;vertical-align:2px;
+  }
+  .fm-dots{
+    flex:1;height:1px;min-width:18px;align-self:flex-end;margin-bottom:5px;
+    background:repeating-linear-gradient(
+      90deg,rgba(27,32,43,.42) 0 2px,transparent 2px 6px);
+  }
+  .fm-price{
+    font-family:var(--cond);font-size:19px;color:var(--red);flex-shrink:0;
+    font-variant-numeric:tabular-nums;
+  }
+  .fm-item p{
+    font-size:15px;line-height:1.65;color:var(--text-dark-soft);
+    margin-top:6px;max-width:46ch;
+  }
+
+  /* ---- unsubscribe / one-off notice pages ---- */
+  .un-wrap{
+    min-height:100dvh;display:flex;align-items:center;justify-content:center;
+    padding:24px;background:var(--paper);
+  }
+  .un-card{
+    max-width:470px;width:100%;background:#fff;
+    border:4px solid var(--text-dark);border-radius:20px;
+    padding:40px 34px;text-align:center;box-shadow:10px 10px 0 var(--red);
+  }
+  .un-logo{
+    font-family:var(--script);font-size:30px;color:var(--red);
+    line-height:1;margin-bottom:6px;
+  }
+  .un-sub{
+    font-family:var(--cond);font-size:11px;letter-spacing:.34em;
+    text-transform:uppercase;color:var(--text-dark-soft);margin-bottom:26px;
+  }
+  .un-h{font-family:var(--slab);font-size:24px;color:var(--text-dark);margin-bottom:12px}
+  .un-p{color:var(--text-dark-soft);font-size:15px;line-height:1.6;margin-bottom:26px}
+  .un-btns{display:grid;gap:10px;justify-items:stretch}
+  .un-btns .btn{width:100%}
+
+  .feats-section{background:var(--paper-2)}
+  .feat-head{text-align:center;max-width:640px;margin:0 auto 56px}
+  .feat-head h2{font-size:clamp(34px,4.8vw,56px);margin:16px 0 14px;color:var(--text-dark)}
+  .feat-head p{color:var(--text-dark-soft)}
+  .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+  .feat{
+    background:#fff;border:3px solid var(--text-dark);border-radius:18px;padding:38px 30px;
+    box-shadow:7px 7px 0 var(--red);
+    position:relative;overflow:hidden;
+    transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+  .feat:hover{transform:translateY(-6px);box-shadow:10px 13px 0 var(--red)}
+  .feat .ic{
+    width:60px;height:60px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+    background:var(--red);margin-bottom:22px;box-shadow:0 5px 0 var(--red-dark);
+  }
+  .feat:nth-child(2) .ic{background:var(--yellow);box-shadow:0 5px 0 #C68D0C}
+  .feat:nth-child(3) .ic{background:var(--cyan);box-shadow:0 5px 0 #14A9B8}
+  .feat .ic svg{width:28px;height:28px;stroke:#fff;stroke-width:2;fill:none}
+  .feat:nth-child(2) .ic svg,.feat:nth-child(3) .ic svg{stroke:var(--text-dark)}
+  .feat h3{font-family:var(--slab);font-size:22px;color:var(--text-dark);margin-bottom:12px}
+  .feat p{font-size:15px;color:var(--text-dark-soft);line-height:1.7}
+
+  .gal{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:190px;gap:14px}
+  .shot-card{
+    position:relative;overflow:hidden;border-radius:14px;cursor:zoom-in;
+    border:3px solid var(--text-dark);background:var(--paper-2);
+  }
+  .shot-card.big{grid-column:span 2;grid-row:span 2}
+  .shot-card.wide{grid-column:span 2}
+  .shot-card img{width:100%;height:100%;object-fit:cover;transition:transform .7s var(--ease)}
+  .shot-card:hover img{transform:scale(1.08)}
+  .shot-card::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,transparent 50%,rgba(13,16,23,.9));pointer-events:none}
+  .shot-card .lab{
+    position:absolute;bottom:14px;left:16px;right:16px;z-index:2;
+    font-family:var(--cond);font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--cream);
+    transform:translateY(8px);opacity:.85;transition:transform .35s var(--ease),opacity .35s}
+  .shot-card:hover .lab{transform:none;opacity:1}
+
+  .review{background:var(--red);color:#fff;text-align:center;padding:110px 24px;position:relative;overflow:hidden}
+  .review::before{content:"";position:absolute;inset:0;opacity:.12;
+    background-image:radial-gradient(#fff 1.4px, transparent 1.4px);background-size:22px 22px}
+  .stars{display:flex;gap:8px;justify-content:center;margin-bottom:28px;position:relative}
+  .stars svg{width:26px;height:26px;fill:var(--yellow);opacity:0;transform:scale(0) rotate(-70deg);
+    transition:opacity .45s var(--bounce),transform .45s var(--bounce);transition-delay:calc(var(--i)*110ms)}
+  .review.in .stars svg{opacity:1;transform:none}
+  .review blockquote{
+    font-family:var(--slab);font-size:clamp(23px,3.4vw,38px);line-height:1.3;max-width:900px;
+    margin:0 auto;position:relative}
+  .review cite{
+    font-family:var(--cond);font-size:14px;letter-spacing:.24em;
+    text-transform:uppercase;color:rgba(255,255,255,.9);font-style:normal}
+  .review cite span{opacity:.7;letter-spacing:.12em}
+  .rev-who{
+    display:flex;align-items:center;justify-content:center;gap:12px;
+    margin-top:26px;position:relative;
+  }
+  .rev-face{
+    width:44px;height:44px;border-radius:50%;object-fit:cover;
+    border:2.5px solid rgba(255,255,255,.8);
+  }
+  .rev-src{
+    display:inline-block;margin-top:12px;position:relative;
+    font-family:var(--cond);font-size:12px;letter-spacing:.2em;
+    text-transform:uppercase;color:rgba(255,255,255,.72);
+    text-decoration:underline;text-underline-offset:4px;
+  }
+  .rev-src:hover{color:#fff}
+
+  .rev-nav{
+    display:flex;align-items:center;justify-content:center;gap:16px;
+    margin-top:30px;position:relative;
+  }
+  .rev-nav > button{
+    width:44px;height:44px;border-radius:50%;cursor:pointer;flex-shrink:0;
+    background:transparent;border:2.5px solid rgba(255,255,255,.55);
+    display:flex;align-items:center;justify-content:center;
+    transition:background .2s,border-color .2s,transform .2s var(--ease);
+  }
+  .rev-nav > button svg{width:20px;height:20px;stroke:#fff;stroke-width:2.6;fill:none}
+  .rev-nav > button:hover{background:rgba(255,255,255,.16);border-color:#fff;transform:scale(1.06)}
+  .rev-nav > button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
+
+  .rev-dots{display:flex;gap:8px;align-items:center}
+  .rev-dots button{
+    width:9px;height:9px;border-radius:50%;cursor:pointer;padding:0;
+    background:rgba(255,255,255,.42);border:0;transition:background .2s,transform .2s;
+  }
+  .rev-dots button.on{background:var(--yellow);transform:scale(1.35)}
+  .rev-dots button:focus-visible{outline:2px solid var(--yellow);outline-offset:3px}
+
+  .visit-grid{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:start}
+  .visit h2{font-size:clamp(34px,4.8vw,56px);color:var(--text-dark);margin:16px 0 20px}
+  /* only the intro paragraph — kept a direct child so it can't reach into
+     the booking form's own labels and fine print */
+  .visit-grid > div > p{color:var(--text-dark-soft);max-width:46ch;margin-bottom:32px}
+  .infos{list-style:none;display:grid;gap:18px}
+  .infos li{display:flex;gap:16px;align-items:flex-start;
+    background:#fff;border:2.5px solid var(--text-dark);border-radius:14px;padding:18px 20px;
+    box-shadow:4px 4px 0 rgba(226,59,46,.22)}
+  .infos svg{width:22px;height:22px;stroke:var(--red);stroke-width:2;fill:none;flex-shrink:0;margin-top:3px}
+  .infos b{display:block;font-family:var(--cond);font-size:17px;letter-spacing:.06em;color:var(--text-dark)}
+  .infos span{font-size:14px;color:var(--text-dark-soft);display:block;margin-top:3px}
+  .booking-form{
+    background:var(--cream);border:4px solid var(--text-dark);border-radius:20px;padding:38px 34px;
+    box-shadow:10px 10px 0 var(--red);
+  }
+  .form-title{font-family:var(--slab);font-size:26px;color:var(--text-dark);text-align:center;margin-bottom:8px}
+  .form-sub{text-align:center;color:var(--text-dark-soft);font-size:14px;margin-bottom:26px}
+  .f{margin-bottom:18px}
+  .f label{display:block;font-family:var(--cond);font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--text-dark);margin-bottom:7px}
+  .f input,.f select{
+    width:100%;background:#fff;border:2.5px solid var(--text-dark);border-radius:10px;
+    padding:14px 15px;font-family:var(--body);font-size:16px;color:var(--text-dark);
+    -webkit-appearance:none;appearance:none;transition:box-shadow .2s,border-color .2s;
+  }
+  .f input:focus,.f select:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 4px rgba(226,59,46,.18)}
+  .frow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .sel{position:relative}
+  .sel::after{content:"";position:absolute;right:16px;top:50%;width:8px;height:8px;
+    border-right:2.5px solid var(--text-dark);border-bottom:2.5px solid var(--text-dark);
+    transform:translateY(-70%) rotate(45deg);pointer-events:none}
+  .booking-form .btn{width:100%;margin-top:8px}
+  .form-fine{text-align:center;font-size:12.5px;color:var(--text-dark-soft);margin-top:14px}
+  .ok{display:none;text-align:center;padding:40px 10px}
+  .ok svg{width:56px;height:56px;stroke:var(--red);stroke-width:2.4;fill:none;margin:0 auto 18px}
+  .ok h3{font-family:var(--slab);font-size:24px;color:var(--text-dark);margin-bottom:8px}
+  .ok p{color:var(--text-dark-soft);font-size:15px}
+
+  footer{background:#0d1017;padding-top:70px}
+  .foot{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:48px;padding-bottom:56px}
+  .foot .logo .l1{font-size:32px}
+  .foot p{font-size:14.5px;color:var(--text-soft);max-width:36ch;line-height:1.7;margin-top:16px}
+  .foot h4{font-family:var(--cond);font-size:14px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--yellow);margin-bottom:18px}
+  .foot ul{list-style:none;display:grid;gap:11px}
+  .foot li,.foot li a{font-size:14.5px;color:var(--text-soft);transition:color .25s}
+  .foot li a:hover{color:var(--yellow)}
+  .foot-bot{border-top:1px solid rgba(255,244,224,.12);padding:22px 0;display:flex;
+    justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--text-soft)}
+  .foot-bot .sc{font-family:var(--script);color:var(--yellow);font-size:16px}
+
+  #lb{
+    position:fixed;inset:0;z-index:500;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:18px;padding:28px;background:rgba(13,16,23,.96);
+    backdrop-filter:blur(10px);opacity:0;pointer-events:none;transition:opacity .35s var(--ease);cursor:zoom-out}
+  #lb.open{opacity:1;pointer-events:auto}
+  #lb img{max-width:92vw;max-height:76vh;object-fit:contain;border:5px solid var(--cream);border-radius:10px;
+    transform:scale(.88);transition:transform .45s var(--bounce)}
+  #lb.open img{transform:scale(1)}
+  #lb p{font-family:var(--cond);font-size:19px;letter-spacing:.14em;text-transform:uppercase;color:var(--yellow)}
+  #lb button{
+    position:absolute;top:22px;right:24px;width:48px;height:48px;border-radius:50%;cursor:pointer;
+    background:var(--red);border:0;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 5px 0 var(--red-dark);transition:transform .2s}
+  #lb button:hover{transform:translateY(-2px)}
+  #lb button svg{width:20px;height:20px;stroke:#fff;stroke-width:2.6;fill:none}
+
+  /* The splash is the same paper as the page, so it fades into the site
+     instead of flashing a black screen at everyone who arrives. */
+  #intro{
+    position:fixed;inset:0;z-index:300;background:var(--paper);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:16px;transition:opacity .6s var(--ease),visibility .6s}
+  #intro.done{opacity:0;visibility:hidden}
+  /* Nothing on the splash animates until Intro.tsx adds .play. A returning
+     visitor never gets it, so there is no half-faded headline to catch
+     while the component is being removed — only the paper-coloured panel,
+     which is the same colour as the page behind it. */
+  /* on paper the neon glow is dropped — it only reads on a dark screen */
+  #intro .i1{
+    font-family:var(--script);font-size:clamp(34px,8vw,66px);color:var(--red);
+    text-shadow:none;opacity:0}
+  #intro.play .i1{animation:iup .9s var(--ease-out) .15s forwards}
+  #intro .i2{font-family:var(--cond);font-size:12px;letter-spacing:.4em;text-transform:uppercase;
+    color:var(--text-dark-soft);opacity:0}
+  #intro.play .i2{animation:iup .8s var(--ease-out) .55s forwards}
+  @keyframes iup{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+  #intro .ln{width:0;height:5px;border-radius:99px;background:var(--yellow)}
+  #intro.play .ln{animation:iline 1s var(--ease) .35s forwards}
+  @keyframes iline{to{width:min(240px,48vw)}}
+
+  #up{
+    position:fixed;right:22px;bottom:22px;z-index:150;width:54px;height:54px;border-radius:50%;
+    background:var(--yellow);border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 0 #C68D0C,0 14px 30px -14px rgba(0,0,0,.8);
+    opacity:0;transform:translateY(16px);pointer-events:none;
+    transition:opacity .35s var(--ease),transform .25s var(--ease)}
+  #up.show{opacity:1;transform:none;pointer-events:auto}
+  #up:hover{transform:translateY(-3px)}
+  #up:active{transform:translateY(3px);box-shadow:0 2px 0 #C68D0C}
+  #up svg{width:22px;height:22px;stroke:var(--text-dark);stroke-width:2.6;fill:none}
+
+  [data-fx]{opacity:0;transition:opacity .8s var(--ease-out),transform .8s var(--ease-out);
+    transition-delay:var(--d,0ms);will-change:transform,opacity}
+  [data-fx="up"]{transform:translateY(44px)}
+  [data-fx="left"]{transform:translateX(-58px)}
+  [data-fx="right"]{transform:translateX(58px)}
+  [data-fx="pop"]{transform:scale(.82);transition:opacity .5s var(--ease-out),transform .7s var(--bounce);
+    transition-delay:var(--d,0ms)}
+  [data-fx].in{opacity:1;transform:none}
+
+  /* ============ CANCEL / UNSUBSCRIBE PAGES ============ */
+  .cancel-page{
+    min-height:100dvh;display:flex;align-items:center;justify-content:center;
+    padding:24px;background:
+      radial-gradient(ellipse 60% 50% at 20% 15%, rgba(226,59,46,.14), transparent 62%),
+      radial-gradient(ellipse 55% 50% at 85% 88%, rgba(47,227,245,.11), transparent 62%),
+      var(--ink);
+  }
+  .cancel-card{
+    max-width:470px;width:100%;background:var(--cream);border:4px solid var(--text-dark);
+    border-radius:22px;padding:38px 32px;text-align:center;box-shadow:10px 10px 0 var(--red);
+  }
+  .cancel-logo{
+    font-family:var(--script);font-size:30px;color:var(--red);line-height:1;margin-bottom:4px;
+  }
+  .cancel-sub{
+    font-family:var(--cond);font-size:11px;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--text-dark-soft);margin-bottom:26px;
+  }
+  .cancel-card h1{
+    font-family:var(--slab);font-size:24px;color:var(--text-dark);margin-bottom:12px;line-height:1.25;
+  }
+  .cancel-text{color:var(--text-dark-soft);font-size:15px;line-height:1.65;margin-bottom:14px}
+  .cancel-details{
+    background:#fff;border:2.5px solid var(--text-dark);border-radius:14px;
+    padding:6px 18px;margin:22px 0 24px;text-align:left;
+  }
+  .cancel-details > div{
+    display:flex;justify-content:space-between;gap:14px;padding:11px 0;
+    border-bottom:1px solid rgba(27,32,43,.12);
+  }
+  .cancel-details > div:last-child{border-bottom:0}
+  .cancel-details dt{
+    font-family:var(--cond);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--text-dark-soft);
+  }
+  .cancel-details dd{font-weight:600;color:var(--text-dark);font-size:15px;text-align:right}
+  .cancel-error{color:var(--red-dark);font-size:14px;margin-bottom:14px}
+  .cancel-fine{font-size:12.5px;color:var(--text-dark-soft);margin-top:16px;line-height:1.5}
+  .cancel-card .btn{width:100%;justify-content:center}
+  @media (max-width:430px){
+    .cancel-card{padding:30px 22px;box-shadow:6px 6px 0 var(--red)}
+  }
+
+  /* ============ DINER CLUB — the marquee sign ============ */
+  .sr-only{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap;border:0;
+  }
+
+  .club{
+    position:relative;overflow:hidden;padding:92px 0 84px;
+    background:
+      radial-gradient(ellipse 60% 55% at 50% 110%, rgba(255,194,44,.14), transparent 62%),
+      radial-gradient(ellipse 55% 50% at 12% 10%, rgba(226,59,46,.16), transparent 62%),
+      var(--ink-2);
+    border-top:4px solid var(--yellow);border-bottom:4px solid var(--yellow);
+  }
+  .club::before{
+    content:"";position:absolute;inset:0;opacity:.05;pointer-events:none;
+    background-image:radial-gradient(var(--cream) 1.3px, transparent 1.3px);
+    background-size:20px 20px;
+  }
+
+  /* Two columns with a lit line down the middle: the diner on the left,
+     the invitation on the right. */
+  .club-inner{
+    position:relative;z-index:2;
+    display:grid;grid-template-columns:1fr 1fr;
+    gap:clamp(28px,5vw,72px);align-items:center;
+  }
+  .club-inner::before{
+    content:"";position:absolute;left:50%;top:4%;bottom:4%;width:2px;
+    transform:translateX(-50%);pointer-events:none;
+    background:linear-gradient(
+      to bottom,transparent,rgba(47,227,245,.55) 22%,
+      rgba(47,227,245,.55) 78%,transparent);
+    box-shadow:0 0 14px rgba(47,227,245,.4);
+  }
+
+  .club-copy{text-align:center;min-width:0}
+
+  .club-head{text-align:center;max-width:620px;margin:0 auto 34px}
+  .club-script{
+    display:block;font-family:var(--script);font-size:clamp(26px,3.6vw,38px);
+    color:var(--yellow);line-height:1;margin-bottom:2px;
+    text-shadow:0 0 10px rgba(255,194,44,.5);
+  }
+  .club-head h2{
+    font-family:var(--cond);font-size:clamp(38px,6vw,68px);line-height:.95;
+    text-transform:uppercase;color:var(--cream);margin:0 0 14px;
+  }
+  .club-head p{color:var(--text-soft);font-size:16px;line-height:1.7}
+
+  /* ---- the terrace, left column ---- */
+  .club-art{
+    min-width:0;pointer-events:none;
+    /* soften where the scene meets the section background */
+    -webkit-mask-image:linear-gradient(to bottom,transparent,#000 10%,#000 92%,transparent);
+    mask-image:linear-gradient(to bottom,transparent,#000 10%,#000 92%,transparent);
+  }
+  .club-art .diner-art{width:100%;height:auto;display:block}
+
+  /* ---- the sign itself ---- */
+  .sign{
+    position:relative;max-width:520px;margin:0 auto;
+    background:var(--red);
+    border:5px solid var(--cream);
+    border-radius:26px 26px 18px 18px;
+    padding:20px;
+    box-shadow:0 0 0 6px var(--red-dark),0 26px 50px -22px #000;
+  }
+  .sign-face{
+    background:var(--cream);border-radius:14px;padding:16px;
+  }
+
+  /* the two bulbs, like headlights */
+  .bulb{
+    position:absolute;top:50%;width:44px;height:44px;border-radius:50%;
+    background:radial-gradient(circle at 38% 34%, #FFF3C4, var(--yellow) 62%, #E0A312);
+    box-shadow:0 0 18px rgba(255,194,44,.9),0 0 46px rgba(255,194,44,.55);
+    animation:bulbGlow 3.4s ease-in-out infinite;
+  }
+  .bulb.left{left:-30px;transform:translateY(-50%)}
+  .bulb.right{right:-30px;transform:translateY(-50%);animation-delay:1.7s}
+  @keyframes bulbGlow{
+    0%,100%{box-shadow:0 0 18px rgba(255,194,44,.9),0 0 46px rgba(255,194,44,.5)}
+    50%{box-shadow:0 0 26px rgba(255,194,44,1),0 0 70px rgba(255,194,44,.75)}
+  }
+
+  /* twinkling sparkles */
+  .spark{
+    position:absolute;color:var(--yellow);width:26px;height:26px;
+    filter:drop-shadow(0 0 6px rgba(255,194,44,.7));
+    animation:twinkle 3s ease-in-out infinite;
+  }
+  .spark.s1{top:-26px;left:9%;width:30px;height:30px}
+  .spark.s2{top:-34px;right:13%;animation-delay:1s}
+  .spark.s3{bottom:-22px;right:6%;width:20px;height:20px;animation-delay:2s}
+  @keyframes twinkle{
+    0%,100%{opacity:.35;transform:scale(.8) rotate(0deg)}
+    50%{opacity:1;transform:scale(1.15) rotate(20deg)}
+  }
+
+  /* ---- the one button across the sign ---- */
+  .sign-btn{
+    width:100%;display:flex;align-items:center;justify-content:center;gap:12px;
+    cursor:pointer;background:transparent;border:0;
+    font-family:var(--cond);font-size:clamp(21px,3.4vw,32px);
+    letter-spacing:.1em;text-transform:uppercase;color:var(--red);
+    padding:14px 10px;border-radius:10px;
+    transition:color .22s var(--ease),transform .22s var(--ease);
+  }
+  .sign-btn svg{
+    width:.72em;height:.72em;flex-shrink:0;
+    transition:transform .3s var(--bounce);
+  }
+  .sign-btn:hover{color:var(--red-dark);transform:scale(1.02)}
+  .sign-btn:hover svg{transform:translateX(6px)}
+  .sign-btn:active{transform:scale(.99)}
+  .sign-btn:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
+
+  .sign-done{
+    display:flex;align-items:center;justify-content:center;gap:12px;
+    font-family:var(--cond);font-size:clamp(18px,2.8vw,26px);letter-spacing:.08em;
+    text-transform:uppercase;color:var(--red);padding:16px 10px;text-align:center;
+  }
+  .sign-done svg{width:30px;height:30px;stroke:var(--red);stroke-width:2.6;
+    fill:none;flex-shrink:0}
+
+  .club-fine{
+    text-align:center;margin-top:30px;font-size:12.5px;color:var(--text-soft);
+  }
+
+  /* ---- signup dialog ---- */
+  .club-modal{
+    position:fixed;inset:0;z-index:520;display:flex;align-items:center;
+    justify-content:center;padding:22px;
+    background:rgba(13,16,23,.82);backdrop-filter:blur(6px);
+    animation:fadeIn .25s var(--ease);
+  }
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+  .club-sheet{
+    position:relative;width:100%;max-width:430px;
+    background:var(--cream);border:4px solid var(--text-dark);border-radius:22px;
+    padding:36px 32px 30px;box-shadow:10px 10px 0 var(--red);
+    animation:sheetIn .4s var(--bounce);
+    /* A sheet taller than the phone it is on has to scroll, or the send
+       button sits below the screen with no way to reach it. */
+    max-height:88dvh;overflow-y:auto;overscroll-behavior:contain;
+  }
+  /* The review sheet asks for a paragraph, so it gets room to write one. */
+  .club-sheet.sheet-wide{max-width:520px}
+  .club-sheet:focus{outline:none}
+  @keyframes sheetIn{
+    from{opacity:0;transform:translateY(24px) scale(.94)}
+    to{opacity:1;transform:none}
+  }
+
+  .sheet-x{
+    position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;
+    background:transparent;border:2.5px solid var(--text-dark);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:background .2s,color .2s;
+  }
+  .sheet-x svg{width:16px;height:16px;stroke:var(--text-dark);stroke-width:2.6;fill:none}
+  .sheet-x:hover{background:var(--red);border-color:var(--red)}
+  .sheet-x:hover svg{stroke:#fff}
+
+  .sheet-script{
+    display:block;font-family:var(--script);font-size:26px;color:var(--red);
+    line-height:1;margin-bottom:1px;
+  }
+  .club-sheet h3{
+    font-family:var(--cond);font-size:36px;line-height:1;text-transform:uppercase;
+    color:var(--text-dark);margin:0 0 10px;
+  }
+  .sheet-sub{color:var(--text-dark-soft);font-size:14.5px;line-height:1.6;margin-bottom:22px}
+
+  .sheet-form label{
+    display:block;font-family:var(--cond);font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--text-dark);margin-bottom:6px;
+  }
+  .sheet-form input{
+    width:100%;background:#fff;border:2.5px solid var(--text-dark);border-radius:11px;
+    padding:13px 15px;margin-bottom:16px;
+    font-family:var(--body);font-size:16px;color:var(--text-dark);
+    transition:box-shadow .2s,border-color .2s;
+  }
+  .sheet-form input::placeholder{color:#9AA0AC}
+  .sheet-form input:focus{
+    outline:none;border-color:var(--red);box-shadow:0 0 0 4px rgba(226,59,46,.18);
+  }
+  .sheet-form .btn{width:100%;justify-content:center;margin-top:4px}
+  .sheet-error{color:var(--red-dark);font-size:14px;margin:0 0 12px}
+  .sheet-fine{
+    text-align:center;font-size:12px;color:var(--text-dark-soft);margin-top:14px;
+  }
+
+  /* The review sheet writes more than a line, so it gets a textarea —
+     styled from the same rule as the inputs so the two cannot drift. */
+  .sheet-form textarea{
+    width:100%;background:#fff;border:2.5px solid var(--text-dark);border-radius:11px;
+    padding:13px 15px;margin-bottom:6px;
+    font-family:var(--body);font-size:16px;line-height:1.55;color:var(--text-dark);
+    resize:vertical;min-height:112px;
+    transition:box-shadow .2s,border-color .2s;
+  }
+  .sheet-form textarea::placeholder{color:#9AA0AC}
+  .sheet-form textarea:focus{
+    outline:none;border-color:var(--red);box-shadow:0 0 0 4px rgba(226,59,46,.18);
+  }
+
+  /* ---- the star picker ---- */
+  .rate{border:0;padding:0;margin:0 0 18px}
+  .rate legend{
+    font-family:var(--cond);font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--text-dark);margin-bottom:8px;padding:0;
+  }
+  .rate-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  /* What the stars mean, said in words as they are chosen. Holds its height
+     so choosing a rating cannot shift the fields underneath. */
+  .rate-word{
+    font-family:var(--cond);font-size:13px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--text-dark-soft);
+    opacity:.65;transition:opacity .2s,color .2s;
+  }
+  .rate-word.on{opacity:1;color:var(--red-dark)}
+  .rate-stars{display:flex;gap:6px}
+  .rate-stars label{
+    margin:0;cursor:pointer;line-height:0;padding:2px;border-radius:8px;
+  }
+  /* The radio itself is the control — hidden from sight, not from the
+     keyboard or a screen reader, so the arrow keys still move the rating. */
+  .rate-stars input{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
+  }
+  .rate-stars svg{
+    width:34px;height:34px;display:block;
+    fill:rgba(27,32,43,.14);
+    transition:fill .15s var(--ease),transform .15s var(--bounce);
+  }
+  .rate-stars label.on svg{fill:var(--yellow)}
+  .rate-stars label:hover svg{transform:scale(1.12)}
+  .rate-stars input:focus-visible + svg{
+    outline:3px solid var(--red);outline-offset:3px;border-radius:4px;
+  }
+  /* Guidance on the left, characters left on the right. Keeps its height
+     either way so the button below never jumps as you type. */
+  .sheet-help{
+    display:flex;justify-content:space-between;gap:14px;
+    min-height:17px;margin:0 0 12px;
+    font-size:12px;color:var(--text-dark-soft);
+  }
+  .sheet-help span:last-child{white-space:nowrap}
+
+  /* ---- the thank-you that replaces the form ---- */
+  .sheet-done{text-align:center;padding:6px 0 2px}
+  .sheet-done-mark{
+    display:flex;align-items:center;justify-content:center;
+    width:64px;height:64px;margin:0 auto 18px;border-radius:50%;
+    background:var(--yellow);border:3px solid var(--text-dark);
+    animation:sheetIn .45s var(--bounce) both;
+  }
+  .sheet-done-mark svg{
+    width:30px;height:30px;fill:none;stroke:var(--text-dark);stroke-width:3;
+  }
+  .sheet-done .sheet-sub{margin-bottom:24px}
+
+  /* ---- "leave a review", under the quote band ---- */
+  .rev-cta{margin-top:26px;position:relative;display:flex;justify-content:center}
+  .rev-cta button{
+    display:inline-flex;align-items:center;gap:9px;
+    font-family:var(--cond);font-size:13px;letter-spacing:.2em;text-transform:uppercase;
+    color:#fff;background:transparent;cursor:pointer;
+    border:2.5px solid rgba(255,255,255,.55);border-radius:999px;
+    padding:12px 26px;
+    transition:background .2s,border-color .2s,transform .2s var(--ease);
+  }
+  .rev-cta button svg{width:17px;height:17px;fill:var(--yellow);flex-shrink:0}
+  .rev-cta button:hover{background:rgba(255,255,255,.16);border-color:#fff;transform:translateY(-2px)}
+  .rev-cta button:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
+  .rev-thanks{
+    display:flex;align-items:center;gap:10px;
+    font-family:var(--cond);font-size:13px;letter-spacing:.16em;text-transform:uppercase;
+    color:#fff;
+  }
+  .rev-thanks svg{
+    width:22px;height:22px;flex-shrink:0;
+    fill:none;stroke:var(--yellow);stroke-width:2.4;
+  }
+
+  /* ============ PREMIUM LAYER ============ */
+
+  /* chrome / metallic display text */
+  .chrome{
+    background:linear-gradient(180deg,#fff 0%,#FFF4E0 32%,#C9BFA8 50%,#FFF9EC 62%,#fff 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 3px 0 rgba(0,0,0,.35)) drop-shadow(0 10px 26px rgba(0,0,0,.5));
+  }
+  .gold{
+    background:linear-gradient(180deg,#FFE9A8 0%,#FFC22C 40%,#C97F0B 56%,#FFD873 74%,#FFF0BE 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 3px 0 rgba(120,70,0,.45)) drop-shadow(0 12px 30px rgba(255,180,40,.35));
+  }
+  /* shine sweep across display headings */
+  .sweep{position:relative;overflow:hidden;display:inline-block}
+  .sweep::after{
+    content:"";position:absolute;top:0;left:-140%;width:60%;height:100%;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.65),transparent);
+    transform:skewX(-18deg);animation:sweepgo 5.5s ease-in-out infinite;
+  }
+  @keyframes sweepgo{0%{left:-140%}55%{left:150%}100%{left:150%}}
+
+  /* word-by-word reveal */
+  .rw .wd{display:inline-block;overflow:hidden;vertical-align:top}
+  .rw .wd > i{
+    display:inline-block;font-style:inherit;transform:translateY(112%);
+    transition:transform .85s var(--ease-out);transition-delay:calc(var(--i) * 75ms);
+  }
+  .rw.go .wd > i{transform:translateY(0)}
+
+  /* menu cards: light sweeps across the photo, card tilts in 3D */
+  .card{transform-style:preserve-3d;will-change:transform}
+  .card-img::after{
+    content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
+    background:linear-gradient(120deg,transparent 38%,rgba(255,255,255,.5) 48%,transparent 58%);
+    transform:translateX(-120%);transition:transform .85s var(--ease);
+  }
+  .card:hover .card-img::after{transform:translateX(120%)}
+
+  /* gallery gold curtain reveal */
+  .shot-card::before{
+    content:"";position:absolute;inset:0;z-index:4;
+    background:linear-gradient(115deg,var(--yellow),#FFE49B 52%,var(--yellow));
+    transform:scaleX(1);transform-origin:left;
+    transition:transform .95s var(--ease) calc(var(--d,0ms) + 180ms);
+  }
+  .shot-card.in::before{transform:scaleX(0);transform-origin:right}
+  .shot-card:hover{border-color:var(--yellow);box-shadow:0 24px 50px -24px rgba(255,194,44,.5)}
+
+  /* feature cards: inner glow + lift */
+  .feat::before{
+    content:"";position:absolute;inset:0;opacity:0;transition:opacity .4s var(--ease);
+    background:radial-gradient(ellipse 70% 60% at 50% 0%, rgba(47,227,245,.16), transparent 65%);
+  }
+  .feat:hover::before{opacity:1}
+  .feat:hover{box-shadow:0 30px 60px -30px rgba(47,227,245,.5)}
+
+
+  /* ambient warm haze over dark sections */
+  #haze{
+    position:fixed;inset:-25%;pointer-events:none;z-index:1;
+    background:
+      radial-gradient(ellipse 26% 20% at 20% 28%, rgba(226,59,46,.07), transparent 62%),
+      radial-gradient(ellipse 24% 18% at 80% 66%, rgba(47,227,245,.06), transparent 62%);
+    animation:drift 24s ease-in-out infinite alternate;
+  }
+  @keyframes drift{from{transform:translate(0,0)}to{transform:translate(3.5%,5%)}}
+
+  /* subtle grain everywhere */
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:96;opacity:.045;
+    mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* nav: neon active pill */
+  .nav-links a.here{color:var(--yellow)}
+  .nav-links a.here::after{width:100%;box-shadow:0 0 12px var(--yellow)}
+
+  /* buttons: gloss highlight */
+  .btn{overflow:hidden}
+  .btn::before{
+    content:"";position:absolute;top:0;left:-120%;width:55%;height:100%;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);
+    transform:skewX(-18deg);transition:left .7s var(--ease);
+  }
+  .btn:hover::before{left:150%}
+
+  /* marquee band premium sheen */
+  .band::after{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(180deg,rgba(255,255,255,.16),transparent 45%,rgba(0,0,0,.18));
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+      transition-duration:.01ms !important}
+    html{scroll-behavior:auto}
+    [data-fx]{opacity:1;transform:none}
+    .rw .wd > i{transform:none}
+    .shot-card::before{display:none}
+    #haze{display:none}
+    /* the illustration holds still: lit, but nothing moving across it */
+    .diner-art .da-on{opacity:1}
+    .diner-art .da-layer{transform:none}
+    .diner-art .da-steam,.diner-art .da-bubbles{display:none}
+  }
+
+  @media (max-width:1024px){
+    /* Stacked: the photograph leads, then the words. A tall polaroid beside
+       a full column of text only works while there are two columns. */
+    .about-grid,.visit-grid{grid-template-columns:1fr;gap:44px}
+    .about-photo{order:-1;max-width:440px;margin:0 auto}
+    .about-photo .shot{aspect-ratio:4/3}
+    .stamp{width:170px;right:-26px;bottom:auto;top:18px;opacity:.1}
+    .feats{grid-template-columns:1fr 1fr}
+    .gal{grid-template-columns:1fr 1fr;grid-auto-rows:170px}
+    .foot{grid-template-columns:1fr 1fr}
+
+    /* hero stacks to one column on tablets — two cramped columns lose impact */
+    .hero{min-height:auto;padding:120px 0 40px}
+    .hero-grid{
+      display:flex;flex-direction:column;align-items:center;
+      text-align:center;gap:30px;
+    }
+    .hero-copy{max-width:600px}
+    .hero-cut{
+      width:80%;max-width:540px;justify-self:center;
+      filter:drop-shadow(0 22px 20px rgba(27,32,43,.2));
+    }
+    .orn{justify-content:center}
+    .hero-sub{margin:0 auto 24px}
+    .hero-cta{justify-content:center}
+    .hero-where{justify-content:center}
+  }
+  @media (max-width:768px){
+    .section{padding:72px 0}
+    .nav-links{display:none}
+    .nav{height:62px;padding:0 10px 0 16px}
+
+    /* full menu page on phones: one column, smaller jump chips */
+    .fm-top{padding:120px 0 42px}
+    .jump-bar{top:76px;padding:10px 0}
+    .jump-row{justify-content:flex-start;gap:7px}
+    .jump{font-size:12px;padding:8px 13px}
+    .fm-sec{padding-top:34px;scroll-margin-top:140px}
+    .fm-list{columns:1}
+    .fm-group-head{margin:42px 0 6px}
+    .fm-group-head p{font-size:15px}
+    .fm-group-line{height:9px;background-size:9px 9px;max-width:220px;margin-top:12px}
+    .fm-ribbon span{padding:11px 22px;box-shadow:4px 4px 0 var(--text-dark)}
+    .fm-thumb{flex-basis:78px;width:78px;border-width:2px;border-radius:10px}
+    .fm-item{margin-bottom:22px;gap:12px}
+    /* the dropdown is its own floating card too, tucked under the pill */
+    .nav-links.open{
+      display:flex;position:fixed;inset:86px 16px auto 16px;flex-direction:column;gap:20px;
+      background:#fff;padding:24px 22px 26px;text-align:center;
+      border:2px solid var(--text-dark);border-radius:20px;
+      box-shadow:0 18px 34px -20px rgba(27,32,43,.6)}
+    .nav-links.open a::after{left:50%;transform:translateX(-50%)}
+    .burger{display:block}
+    .nav .btn{display:none}
+    .feats{grid-template-columns:1fr}
+    /* phones: category bar starts at the left edge and runs off-screen */
+    .logo-mark img{height:44px}
+    .brand{gap:9px}
+    .brand img{height:38px}
+    .brand-txt b{font-size:16.5px}
+    .brand-txt i{font-size:9px;letter-spacing:.24em}
+    .tabs{justify-content:flex-start;gap:8px;padding:5px 2px}
+    .tab{font-size:13.5px;padding:11px 18px;border-width:2.5px;letter-spacing:.1em;gap:7px}
+    .tab svg{width:18px;height:18px}
+    .tabs-wrap{margin-bottom:30px}
+    /* phones: one card at a time, arrows out of the way */
+    .card{flex-basis:78vw;max-width:320px}
+    .dishes{gap:14px}
+    .rail-arrow{width:44px;height:44px;top:34%}
+    .rail-arrow.left{left:-6px}
+    .rail-arrow.right{right:-6px}
+    .rail-wrap::before,.rail-wrap::after{width:24px}
+    .gal{grid-template-columns:1fr;grid-auto-rows:210px}
+    .shot-card.big,.shot-card.wide{grid-column:span 1;grid-row:span 1}
+    .foot{grid-template-columns:1fr;gap:34px}
+    /* ---------------------------------------------------------------
+       PHONES: compact hero — headline + food image visible above fold,
+       CTAs right after. The food photo now sits between the tagline and
+       the action buttons via flexbox ordering, so users see the plate
+       without scrolling.
+       --------------------------------------------------------------- */
+    .desktop-only{display:none !important}
+    .mobile-only{display:block !important}
+
+    .hero{min-height:auto;padding:90px 0 20px;display:block}
+    .hero-grid{
+      display:block;text-align:center;padding:0 16px;
+    }
+    .hero-copy{
+      max-width:none;width:100%;
+    }
+    .hero-cut-wrapper.mobile-only{
+      width:100%;max-width:340px;margin:12px auto 16px;
+    }
+    .hero-cut{
+      width:100%;height:auto;
+      filter:drop-shadow(0 14px 14px rgba(27,32,43,.16));
+    }
+
+    .hero .h-kick{font-size:13px;letter-spacing:.22em;margin-bottom:4px}
+    .hero .h-a{font-size:clamp(40px,13vw,62px);line-height:.88}
+    .hero .h-b{font-size:clamp(32px,10vw,48px)}
+    .orn{justify-content:center;margin:6px 0 6px}
+    .orn svg{width:40px}
+    .hero-tail{font-size:clamp(18px,5vw,24px);margin-bottom:0}
+    .hero-sub{display:none}
+    .hero-where{justify-content:center;margin-top:14px;font-size:12px;padding-bottom:10px}
+
+    /* compact CTA buttons */
+    .hero-cta{
+      display:flex;flex-direction:row;gap:10px;align-items:center;
+      width:100%;justify-content:center;margin-top:14px;
+    }
+    .hero-cta .btn{
+      flex:1;max-width:170px;min-height:46px;padding:0 16px;
+      font-size:13.5px;letter-spacing:.08em;
+    }
+    .hero-cta .btn.ghost-dark{
+      color:var(--red);border-color:var(--red);
+    }
+    .hero-cta .btn.ghost-dark:hover{background:var(--red);color:#fff}
+    .booking-form{padding:30px 22px;box-shadow:6px 6px 0 var(--red)}
+
+    /* the sign on phones: bulbs tuck inside, form stacks */
+    .club{padding:66px 0 60px}
+    /* Stacked on phones the invitation comes first — someone scrolling on a
+       small screen should hit the button before the scenery. The vertical
+       rule becomes a horizontal one above the artwork, so it still lands
+       exactly between the two. */
+    .club-inner{grid-template-columns:1fr;gap:30px}
+    .club-inner::before{display:none}
+    .club-copy{order:-1}
+    .club-art{
+      padding-top:30px;
+      border-top:2px solid rgba(47,227,245,.45);
+      /* only fade the bottom here — a mask would clip a glow on the rule */
+      -webkit-mask-image:linear-gradient(to bottom,#000 88%,transparent);
+      mask-image:linear-gradient(to bottom,#000 88%,transparent);
+    }
+    .sign{padding:14px;border-radius:20px 20px 14px 14px;margin:0 6px}
+    .sign-face{padding:13px}
+    .bulb{width:34px;height:34px}
+    .bulb.left{left:-16px}
+    .bulb.right{right:-16px}
+    .sign-btn{padding:12px 6px;gap:9px}
+    .spark.s1{width:24px;height:24px;top:-20px}
+    .club-sheet{padding:30px 22px 26px;box-shadow:6px 6px 0 var(--red)}
+    .band-track span{font-size:17px;gap:22px}
+    #up{width:48px;height:48px;right:16px;bottom:16px}
+  }
+  @media (max-width:430px){
+    .wrap{padding:0 18px}
+    /* smallest phones: the badge and the name only, no strapline */
+    .brand img{height:34px}
+    .brand-txt b{font-size:15px}
+    .brand-txt i{display:none}
+    .hero-where{font-size:12.5px;gap:7px}
+    .frow{grid-template-columns:1fr}
+    .card-body{padding:18px 18px 20px}
+    .card h3{font-size:19px}
+    .card .price{padding:11px 26px;font-size:17px}
+  }
