@@ -282,8 +282,15 @@ good the DNS is.
 
 ### DNS records
 
-Full walkthrough, including exactly what to paste into Google's DNS console
-and how to check it afterwards: **[`docs/EMAIL-DNS.md`](docs/EMAIL-DNS.md)**.
+Full walkthrough for this domain specifically — what to paste into
+**GoDaddy's** DNS console, in what order, and how to check it afterwards:
+**[`docs/DNS.md`](docs/DNS.md)**. It also covers pointing the domain at
+Vercel when the owner is ready to retire the old site.
+
+> One thing in there is urgent rather than eventual: the domain already
+> carries a GoDaddy-created DMARC record set to `p=quarantine`, with no SPF
+> or DKIM to satisfy it. Anything sent from the domain before those records
+> exist is asked to prove itself, cannot, and is quarantined.
 
 ---
 
