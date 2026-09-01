@@ -679,12 +679,17 @@
   .rail-wrap::before{left:-2px;background:linear-gradient(90deg,var(--cream),transparent)}
   .rail-wrap::after{right:-2px;background:linear-gradient(270deg,var(--cream),transparent)}
   /* ---- menu cards: outlined, centred, price pill (diner-poster style) ---- */
+  /* A quieter card. The red border used to run around every one of these,
+     which put three separate reds on screen at once — frame, dish name and
+     price — all competing with the photograph they surround. The frame is
+     now a warm hairline and the red arrives on hover instead, so it reads
+     as something you can touch rather than as decoration. */
   .card{
     display:none;background:#fff;
-    border:2.5px solid var(--red);border-radius:20px;overflow:hidden;
+    border:1.5px solid rgba(27,32,43,.10);border-radius:20px;overflow:hidden;
     text-align:center;position:relative;
     flex:0 0 290px;scroll-snap-align:center;
-    box-shadow:0 10px 26px -18px rgba(27,32,43,.45);
+    box-shadow:0 12px 30px -20px rgba(27,32,43,.4);
     /* --sc and --op are set from JS by how close the card is to the middle */
     transform:scale(var(--sc,1)) translateY(var(--ty,0));
     opacity:var(--op,1);
@@ -695,13 +700,14 @@
   @keyframes pop{from{opacity:0;transform:scale(.9) translateY(22px)}to{opacity:1;transform:none}}
   .card:hover{
     --ty:-8px;--op:1;
-    border-color:var(--red-dark);
-    box-shadow:0 26px 40px -22px rgba(226,59,46,.55);
+    border-color:var(--red);
+    box-shadow:0 26px 40px -22px rgba(226,59,46,.45);
   }
 
+  /* Full width, and the card's own corners do the rounding. Inset with a
+     radius of its own, it read as a picture frame inside a picture frame. */
   .card-img{
     position:relative;aspect-ratio:4/3;overflow:hidden;cursor:zoom-in;
-    margin:10px 10px 0;border-radius:13px;
     background:linear-gradient(150deg,#2b3242,#171d28);
   }
   .card-img img{width:100%;height:100%;object-fit:cover;
@@ -709,14 +715,14 @@
   .card:hover .card-img img{transform:scale(1.08)}
 
   .card-tag{
-    position:absolute;top:11px;left:11px;z-index:3;
+    position:absolute;top:12px;left:12px;z-index:3;
     font-family:var(--cond);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
     background:var(--yellow);color:var(--text-dark);padding:6px 12px;border-radius:999px;
     box-shadow:0 3px 0 #C68D0C;
   }
 
   .card-body{
-    padding:20px 22px 22px;display:flex;flex-direction:column;flex:1;
+    padding:22px 22px 24px;display:flex;flex-direction:column;flex:1;
     align-items:center;
   }
   /* the item number, as printed on the paper menu */
@@ -737,14 +743,14 @@
   /* price sits at the bottom of every card, like a button would */
   .card .price{
     margin-top:auto;display:inline-block;
-    font-family:var(--cond);font-size:18px;letter-spacing:.1em;
+    font-family:var(--cond);font-size:17px;letter-spacing:.1em;
     font-variant-numeric:tabular-nums;white-space:nowrap;
     background:var(--red);color:#fff;
-    padding:12px 30px;border-radius:999px;
-    box-shadow:0 4px 0 var(--red-dark);
+    padding:9px 24px;border-radius:999px;
+    box-shadow:0 3px 0 var(--red-dark);
     transition:transform .2s var(--ease),box-shadow .2s var(--ease);
   }
-  .card:hover .price{transform:translateY(-2px);box-shadow:0 6px 0 var(--red-dark)}
+  .card:hover .price{transform:translateY(-2px);box-shadow:0 5px 0 var(--red-dark)}
   .menu-empty{
     text-align:center;color:var(--text-dark-soft);font-size:16px;
     border:2.5px dashed rgba(27,32,43,.2);border-radius:20px;
