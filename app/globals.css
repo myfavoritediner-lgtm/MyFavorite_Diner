@@ -1222,6 +1222,18 @@
   [data-fx="pop"]{transform:scale(.82);transition:opacity .5s var(--ease-out),transform .7s var(--bounce);
     transition-delay:var(--d,0ms)}
   [data-fx].in{opacity:1;transform:none}
+  /* On a phone a sideways reveal parks the element 58px outside the
+     viewport until it scrolls into view, which made the whole page
+     draggable left and right by that much — 415px of content in a 390px
+     window. Revealing upwards instead cannot overflow a page that already
+     scrolls that way.
+
+     Fixed here rather than by clipping the root: overflow-x:clip on <html>
+     does stop the drag, but it also stops position:sticky working, and the
+     menu jump bar depends on it. */
+  @media (max-width:768px){
+    [data-fx="left"],[data-fx="right"]{transform:translateY(34px)}
+  }
 
   /* ============ CANCEL / UNSUBSCRIBE PAGES ============ */
   .cancel-page{
