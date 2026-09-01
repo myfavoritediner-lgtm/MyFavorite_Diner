@@ -35,7 +35,10 @@ export const FALLBACK_REVIEW: Review = {
 export const FALLBACK_SETTINGS: Settings = {
   phone: '',
   email: '',
-  facebook_url: '',
+  /* The diner's own accounts. Tracking parameters trimmed off the shared
+     links — they identify whoever did the sharing, not the page. */
+  facebook_url: 'https://www.facebook.com/share/14k2USxexJm/',
+  instagram_url: 'https://www.instagram.com/myfav.diner',
   hours: 'Open every day — add your real opening times',
   /* Weekday numbers, Sunday is 0. Empty means open all week, which is what
      the booking calendar assumes until Settings says otherwise. */

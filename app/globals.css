@@ -1143,6 +1143,23 @@
   .foot ul{list-style:none;display:grid;gap:11px}
   .foot li,.foot li a{font-size:14.5px;color:var(--text-soft);transition:color .25s}
   .foot li a:hover{color:var(--yellow)}
+/* ---- the diner's own accounts, in the footer ---- */
+  .social{display:flex;gap:12px;margin-top:20px;list-style:none;padding:0}
+  .social a{
+    display:flex;align-items:center;justify-content:center;
+    width:44px;height:44px;border-radius:50%;
+    border:2px solid rgba(255,244,224,.4);
+    transition:background .2s,border-color .2s,transform .2s var(--ease);
+  }
+  .social svg{
+    width:20px;height:20px;fill:none;
+    stroke:var(--text);stroke-width:1.9;
+    stroke-linecap:round;stroke-linejoin:round;
+  }
+  .social a:hover{background:var(--red);border-color:var(--red);transform:translateY(-2px)}
+  .social a:hover svg{stroke:#fff}
+  .social a:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
+
   .foot-bot{border-top:1px solid rgba(255,244,224,.12);padding:22px 0;display:flex;
     justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--text-soft)}
   .foot-bot .sc{font-family:var(--script);color:var(--yellow);font-size:16px}
@@ -1551,18 +1568,13 @@
 
     /* The form is taller than the sheet it sits in — measured at 735px of
        content in a 604px box, and worse once the on-screen keyboard opens.
-       That put "Send my review" below the fold with nothing to suggest it
-       was there. Sticking it to the foot keeps the way out in sight while
-       the rest is filled in.
-
-       The cream ring is a cushion: without it the form scrolls visibly
-       through the gaps either side of the rounded button. */
-    .sheet-form .btn{
-      position:sticky;bottom:0;z-index:2;
-      box-shadow:0 6px 0 var(--red-dark),
-                 0 14px 30px -12px rgba(226,59,46,.8),
-                 0 0 0 14px var(--cream);
-    }
+       A sticky send button was tried here and taken out again: it floated
+       over the review box while you were still writing in it, which is a
+       worse problem than the one it solved. The textarea gives back the
+       height instead, and the fields scroll themselves into view on focus
+       (see ReviewForm) so the keyboard cannot sit on top of them. */
+    .sheet-form textarea{min-height:92px}
+    .club-sheet{padding-top:26px}
   }
 
 

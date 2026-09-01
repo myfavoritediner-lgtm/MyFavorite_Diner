@@ -151,6 +151,25 @@ export default function ReviewForm() {
     requestCloseRef.current = requestClose;
   });
 
+  /**
+   * Keep the field you are typing in above the keyboard.
+   *
+   * On a phone, tapping a field near the bottom of the sheet opens the
+   * on-screen keyboard over the lower half of the screen — and the field
+   * that raised it is often what ends up underneath. The sheet scrolls, so
+   * nothing is broken exactly, but it looks as though the review box cannot
+   * be typed into, which is the report that brought this here.
+   *
+   * The delay is for the keyboard's own animation: scrolling before it has
+   * finished opening measures against a viewport that is about to change.
+   */
+  function keepInView(e: React.FocusEvent<HTMLElement>) {
+    const field = e.currentTarget;
+    setTimeout(() => {
+      field.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 300);
+  }
+
   useEffect(() => {
     if (!open) return;
 
@@ -425,6 +444,7 @@ export default function ReviewForm() {
                     aria-invalid={errs.author ? true : undefined}
                     aria-describedby={errs.author ? 'rev-name-err' : undefined}
                     value={author}
+                    onFocus={keepInView}
                     onChange={(e) => setAuthor(e.target.value)}
                   />
                   {errs.author ? (
@@ -447,6 +467,7 @@ export default function ReviewForm() {
                       errs.quote ? 'rev-quote-err rev-quote-help' : 'rev-quote-help'
                     }
                     value={quote}
+                    onFocus={keepInView}
                     onChange={(e) => setQuote(e.target.value)}
                   />
 

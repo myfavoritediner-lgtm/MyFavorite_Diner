@@ -28,6 +28,7 @@ const GROUPS: { title: string; fields: Field[] }[] = [
       { key: 'phone', label: 'Phone number', placeholder: '038 123 4567' },
       { key: 'email', label: 'Email address', placeholder: 'hello@example.com' },
       { key: 'facebook_url', label: 'Facebook page', placeholder: 'https://facebook.com/…' },
+      { key: 'instagram_url', label: 'Instagram', placeholder: 'https://instagram.com/…' },
     ],
   },
   {

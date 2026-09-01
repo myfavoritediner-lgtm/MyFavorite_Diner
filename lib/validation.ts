@@ -47,6 +47,7 @@ export const SETTING_KEYS: string[] = [
   'phone',
   'email',
   'facebook_url',
+  'instagram_url',
   'address_line1',
   'address_line2',
   'hours',

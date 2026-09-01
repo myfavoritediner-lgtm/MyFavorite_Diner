@@ -689,9 +689,16 @@ emails.
 **Typefaces:** Kaushan Script (logo), Alfa Slab One (headings), Anton
 (labels and numbers), Work Sans (body).
 
-**The favicon** is the logo, shown the way the navbar shows it:
-`public/logo-mark.png` centred on the white pill with the ink border round
-it.
+**The favicon** is the logo, carried the way the navbar carries it:
+`public/logo-mark.png` on white, with no border of its own — the outline in
+the header belongs to the nav bar, not to the mark inside it.
+
+The white is not a style choice. The script lettering in `logo-mark.png` is
+knocked out rather than painted — some 15,000 transparent pixels inside the
+sign — so the words are whatever shows through from behind. On a transparent
+icon over a dark browser tab they vanish entirely. Run
+`node scripts/generate-icons.mjs proof.png` and the proof sheet shows each
+size on a light strip and a dark one, which is how that was caught.
 
 `scripts/generate-icons.mjs` builds it — it decodes the logo, resizes it and
 composes `app/icon.png` (256px) and `app/apple-icon.png` (180px, square and

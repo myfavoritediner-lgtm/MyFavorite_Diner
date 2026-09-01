@@ -111,7 +111,13 @@ export function restaurantJsonLd(settings: Record<string, string>) {
   if (settings.phone) data.telephone = settings.phone;
   if (settings.email) data.email = settings.email;
 
-  const sameAs = [SITE.mapsUrl, settings.facebook_url].filter(Boolean);
+  // sameAs is how Google ties the site to the diner's own accounts, which
+  // is what lets the profiles show up beside the search result.
+  const sameAs = [
+    SITE.mapsUrl,
+    settings.facebook_url,
+    settings.instagram_url,
+  ].filter(Boolean);
   if (sameAs.length) data.sameAs = sameAs;
 
   return data;

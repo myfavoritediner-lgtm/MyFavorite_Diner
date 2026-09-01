@@ -17,6 +17,48 @@ export default function Footer({ settings }: { settings: Settings }) {
               wagyu burgers, all-day breakfast, pasta, cocktails and ice-cold
               beer.
             </p>
+
+            {/* Only the accounts that have been filled in. An icon linking
+                nowhere is worse than one fewer icon. */}
+            {settings.facebook_url || settings.instagram_url ? (
+              <ul className="social">
+                {settings.facebook_url ? (
+                  <li>
+                    <a
+                      href={settings.facebook_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="My Favorite Diner on Facebook"
+                    >
+                      {/* Drawn as an outline, like its neighbour and like
+                          every other icon on the site. */}
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="3" y="3" width="18" height="18" rx="5" />
+                        <path d="M15.2 8.2h-1.4a2 2 0 0 0-2 2v7.1" />
+                        <path d="M9.9 12.6h4.6" />
+                      </svg>
+                    </a>
+                  </li>
+                ) : null}
+
+                {settings.instagram_url ? (
+                  <li>
+                    <a
+                      href={settings.instagram_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="My Favorite Diner on Instagram"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="3" y="3" width="18" height="18" rx="5" />
+                        <circle cx="12" cy="12" r="4" />
+                        <circle cx="17.5" cy="6.5" r="1.4" />
+                      </svg>
+                    </a>
+                  </li>
+                ) : null}
+              </ul>
+            ) : null}
           </div>
 
           <div data-fx="up" style={{ ['--d' as string]: '100ms' }}>

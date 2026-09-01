@@ -28,19 +28,26 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE = 'public/logo-mark.png';
 
 const WHITE = [255, 255, 255]; //  .nav background
-const INK = [20, 24, 33]; //      --ink, the navbar border
-const CREAM = [255, 244, 224]; // --cream, behind iOS's rounded corners
 
-/** Fractions of the icon's width. */
 /**
- * The wordmark is 420x235 — about 1.8 times wider than it is tall — so in a
- * square icon it can only ever fill a band across the middle. Every pixel
- * given to padding is taken from the only part anyone can actually see, so
- * it runs close to the edge and the outline is kept fine.
+ * White behind the mark, and no border — the way the navbar carries it.
+ *
+ * The nav is a white pill with a dark outline, but that outline belongs to
+ * the bar, not to the logo: inside it the mark simply sits on the white. An
+ * earlier version of this icon drew a bordered box around the mark, and that
+ * box was the one thing making the tab look unlike the header.
+ *
+ * The white is not decoration. The script lettering in logo-mark.png is
+ * knocked out rather than painted — 15,000-odd transparent pixels inside the
+ * sign — so the words are whatever shows through from behind. On a
+ * transparent icon over a dark tab strip they disappear completely. The
+ * navbar gets away with it because the pill behind it is white; so does this.
+ *
+ * The wordmark is 420x235, about 1.8 times wider than it is tall, so in a
+ * square it can only ever fill a band across the middle.
  */
-const LOGO_W = 0.94; // how much of the tile the wordmark spans
-const RADIUS = 0.18; // rounded square, in the site's idiom
-const BORDER = 0.018; // the navbar's outline, proportionally
+const LOGO_W = 0.94; // the browser tab
+const APPLE_LOGO_W = 0.84; // iOS crops toward the corners, so leave a margin
 
 /* ---------------------------------------------------------------- */
 /* reading a PNG                                                     */
@@ -217,66 +224,20 @@ function resize(src, sw, sh, dw, dh) {
 /* drawing the tile                                                  */
 /* ---------------------------------------------------------------- */
 
-/** Signed distance to a rounded rectangle, for an edge that is not jagged. */
-function roundedRect(x, y, size, inset, r) {
-  const half = size / 2 - inset;
-  const qx = Math.abs(x - size / 2) - (half - r);
-  const qy = Math.abs(y - size / 2) - (half - r);
-  return (
-    Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) +
-    Math.min(Math.max(qx, qy), 0) -
-    r
-  );
-}
-
 /**
- * The navbar's pill, squared off: white, with the ink outline round it.
- * `squareTile` is for iOS, which rounds the corners itself and fills
- * anything left transparent with black.
+ * The ground the mark sits on: the navbar's white, edge to edge, with no
+ * border of its own. Opaque in both sizes — see the note above about the
+ * lettering being knocked out, and iOS filling transparency with black.
  */
-function drawTile(px, squareTile) {
+function drawTile(px) {
   const out = Buffer.alloc(px * px * 4);
-  const border = Math.max(1, px * BORDER);
-  const radius = px * RADIUS;
-  const N = 4;
 
-  for (let y = 0; y < px; y++) {
-    for (let x = 0; x < px; x++) {
-      let r = 0, g = 0, b = 0, hits = 0;
-
-      for (let sy = 0; sy < N; sy++) {
-        for (let sx = 0; sx < N; sx++) {
-          const px_ = x + (sx + 0.5) / N;
-          const py_ = y + (sy + 0.5) / N;
-          const d = roundedRect(px_, py_, px, 0, radius);
-
-          let colour = null;
-          if (squareTile) colour = d > -border ? INK : WHITE;
-          else if (d <= 0) colour = d > -border ? INK : WHITE;
-
-          if (colour) {
-            r += colour[0];
-            g += colour[1];
-            b += colour[2];
-            hits++;
-          }
-        }
-      }
-
-      const o = (y * px + x) * 4;
-      if (hits) {
-        out[o] = Math.round(r / hits);
-        out[o + 1] = Math.round(g / hits);
-        out[o + 2] = Math.round(b / hits);
-        out[o + 3] = Math.round((hits / (N * N)) * 255);
-      } else if (squareTile) {
-        // Never leave an Apple icon see-through.
-        out[o] = CREAM[0];
-        out[o + 1] = CREAM[1];
-        out[o + 2] = CREAM[2];
-        out[o + 3] = 255;
-      }
-    }
+  for (let i = 0; i < px * px; i++) {
+    const o = i * 4;
+    out[o] = WHITE[0];
+    out[o + 1] = WHITE[1];
+    out[o + 2] = WHITE[2];
+    out[o + 3] = 255;
   }
   return out;
 }
@@ -312,9 +273,9 @@ function compose(base, bw, bh, top, tw, th, ox, oy) {
 
 /** The finished icon at one size. */
 function render(logo, px, squareTile) {
-  const tile = drawTile(px, squareTile);
+  const tile = drawTile(px);
 
-  const w = Math.round(px * LOGO_W);
+  const w = Math.round(px * (squareTile ? APPLE_LOGO_W : LOGO_W));
   const h = Math.max(1, Math.round((w * logo.height) / logo.width));
   const scaled = resize(logo.rgba, logo.width, logo.height, w, h);
 
@@ -418,28 +379,57 @@ try {
  */
 const proof = process.argv[2];
 if (proof) {
+  /**
+   * The icon is transparent now, so how it reads depends on the colour of
+   * the tab strip behind it. Each size is drawn twice — once on a light
+   * strip, once on a dark one — blown up with hard pixel edges so what a
+   * browser will actually show is what you are looking at.
+   */
   const sizes = [16, 24, 32, 48];
+  const grounds = [
+    [246, 246, 246], // a light tab strip
+    [42, 42, 46], //    a dark one
+  ];
   const scale = 8;
-  const pad = 8;
-  const W = sizes.reduce((a, s) => a + s * scale + pad, pad);
-  const H = 48 * scale + pad * 2;
+  const pad = 10;
+  const rowH = 48 * scale + pad;
+  const W = sizes.reduce((a, n) => a + n * scale + pad, pad);
+  const H = grounds.length * rowH + pad;
   const canvas = Buffer.alloc(W * H * 4);
 
-  let originX = pad;
-  for (const s of sizes) {
-    const img = render(logo, s, false);
-    for (let y = 0; y < s * scale; y++) {
-      for (let x = 0; x < s * scale; x++) {
-        const src = (Math.floor(y / scale) * s + Math.floor(x / scale)) * 4;
-        const dst = ((y + pad) * W + x + originX) * 4;
-        canvas[dst] = img[src];
-        canvas[dst + 1] = img[src + 1];
-        canvas[dst + 2] = img[src + 2];
-        canvas[dst + 3] = img[src + 3];
+  grounds.forEach((ground, row) => {
+    const top = pad + row * rowH;
+
+    // Paint the strip first, then composite each icon onto it.
+    for (let y = top - pad / 2; y < top + 48 * scale + pad / 2; y++) {
+      for (let x = 0; x < W; x++) {
+        const o = (y * W + x) * 4;
+        canvas[o] = ground[0];
+        canvas[o + 1] = ground[1];
+        canvas[o + 2] = ground[2];
+        canvas[o + 3] = 255;
       }
     }
-    originX += s * scale + pad;
-  }
+
+    let originX = pad;
+    for (const n of sizes) {
+      const img = render(logo, n, false);
+      for (let y = 0; y < n * scale; y++) {
+        for (let x = 0; x < n * scale; x++) {
+          const src = (Math.floor(y / scale) * n + Math.floor(x / scale)) * 4;
+          const dst = ((y + top) * W + x + originX) * 4;
+          const alpha = img[src + 3] / 255;
+          if (alpha <= 0) continue;
+          for (let c = 0; c < 3; c++) {
+            canvas[dst + c] = Math.round(
+              img[src + c] * alpha + canvas[dst + c] * (1 - alpha)
+            );
+          }
+        }
+      }
+      originX += n * scale + pad;
+    }
+  });
 
   writeFileSync(proof, encodePng(W, H, canvas));
   console.log(`proof sheet            ${W}x${H}  ->  ${proof}`);
