@@ -1040,6 +1040,95 @@
     transform:translateY(-70%) rotate(45deg);pointer-events:none}
   .booking-form .btn{width:100%;margin-top:8px}
   .form-fine{text-align:center;font-size:12.5px;color:var(--text-dark-soft);margin-top:14px}
+  /* ---- the booking calendar (components/site/DatePicker.tsx) ---- */
+  /* A field that looks like the inputs around it until it is opened. The
+     browser's own date picker cannot grey out a Monday, so this replaces it
+     rather than dressing it up. */
+  .dp{position:relative}
+  .dp-trigger{
+    width:100%;display:flex;align-items:center;gap:10px;
+    background:#fff;border:2.5px solid var(--text-dark);border-radius:10px;
+    padding:14px 15px;font-family:var(--body);font-size:16px;
+    color:#9AA0AC;text-align:left;cursor:pointer;
+    transition:box-shadow .2s,border-color .2s;
+  }
+  .dp-trigger.has-value{color:var(--text-dark)}
+  .dp-trigger svg{
+    width:19px;height:19px;flex-shrink:0;
+    fill:none;stroke:var(--text-dark);stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round;
+  }
+  .dp-trigger:hover{border-color:var(--red)}
+  .dp-trigger:focus-visible{
+    outline:none;border-color:var(--red);box-shadow:0 0 0 4px rgba(226,59,46,.18);
+  }
+  .dp-trigger.is-bad{border-color:var(--red-dark);background:#FFF7F6}
+  .dp-trigger:disabled{opacity:.55;cursor:default}
+
+  .dp-pop{
+    position:absolute;z-index:60;top:calc(100% + 8px);left:0;
+    width:min(330px,calc(100vw - 48px));
+    background:var(--cream);border:3px solid var(--text-dark);border-radius:16px;
+    padding:14px 14px 12px;box-shadow:6px 6px 0 var(--red);
+    animation:dpIn .18s var(--ease-out);
+  }
+  @keyframes dpIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+  .dp-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .dp-title{
+    font-family:var(--cond);font-size:15px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--text-dark);
+  }
+  .dp-arrow{
+    width:34px;height:34px;flex-shrink:0;border-radius:50%;
+    background:transparent;border:2.5px solid var(--text-dark);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:background .18s;
+  }
+  .dp-arrow svg{width:15px;height:15px;fill:none;stroke:var(--text-dark);stroke-width:2.6;
+    stroke-linecap:round;stroke-linejoin:round}
+  .dp-arrow:hover:not(:disabled){background:var(--red);border-color:var(--red)}
+  .dp-arrow:hover:not(:disabled) svg{stroke:#fff}
+  .dp-arrow:disabled{opacity:.25;cursor:default}
+  .dp-arrow:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+
+  .dp-dow,.dp-week{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .dp-dow{margin-bottom:4px}
+  .dp-dow span{
+    text-align:center;font-family:var(--cond);font-size:11px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--text-dark-soft);padding:4px 0;
+  }
+  .dp-pad{display:block}
+  .dp-day{
+    aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+    background:transparent;border:0;border-radius:9px;cursor:pointer;
+    font-family:var(--body);font-size:14.5px;color:var(--text-dark);
+    transition:background .15s,color .15s;
+  }
+  .dp-day:hover{background:rgba(27,32,43,.09)}
+  .dp-day:focus-visible{outline:3px solid var(--red);outline-offset:-2px}
+  /* Today, until it is the day chosen. */
+  .dp-day.is-today{box-shadow:inset 0 0 0 2px var(--text-dark)}
+  /* Closed, gone, or past the year we take bookings for. Struck through so
+     it reads as "not this one" rather than as a rendering fault. */
+  .dp-day.is-off{
+    color:var(--text-dark-soft);opacity:.45;cursor:not-allowed;
+    text-decoration:line-through;text-decoration-thickness:1.5px;
+  }
+  .dp-day.is-off:hover{background:transparent}
+  .dp-day.is-sel{background:var(--red);color:#fff;box-shadow:none}
+  .dp-day.is-sel:hover{background:var(--red-dark)}
+
+  .dp-note{
+    margin:10px 0 0;padding-top:9px;border-top:2px dashed rgba(27,32,43,.18);
+    font-size:12.5px;color:var(--text-dark-soft);text-align:center;
+  }
+
+  /* An error under a single field, rather than the form-wide one. */
+  .f-err{
+    display:flex;align-items:center;gap:6px;
+    margin:7px 0 0;font-size:13px;color:var(--red-dark);
+  }
+
   .ok{display:none;text-align:center;padding:40px 10px}
   .ok svg{width:56px;height:56px;stroke:var(--red);stroke-width:2.4;fill:none;margin:0 auto 18px}
   .ok h3{font-family:var(--slab);font-size:24px;color:var(--text-dark);margin-bottom:8px}
@@ -1414,6 +1503,69 @@
     font-size:12px;color:var(--text-dark-soft);
   }
   .sheet-help span:last-child{white-space:nowrap}
+  /* ---- a problem with one field, said under that field ---- */
+  /* Replaces the browser's validation bubble, which lands in the corner of
+     the field, styles itself, and vanishes on the next keystroke. */
+  .field-err{
+    font-size:13px;line-height:1.45;color:var(--red-dark);font-weight:500;
+  }
+  .sheet-form input + .field-err{margin:-11px 0 15px}
+  .sheet-form textarea + .field-err{margin:3px 0 4px}
+  .rate .field-err{margin:9px 0 0}
+  .sheet-form input.is-bad,.sheet-form textarea.is-bad{
+    border-color:var(--red-dark);background:#FFF7F6;
+  }
+
+  /* ---- "discard this review?" ---- */
+  /* Over the sheet rather than instead of it: whatever they wrote is still
+     there behind the card while they decide. Fixed rather than absolute so
+     it stays centred on the screen even when the sheet is scrolled. */
+  .sheet-confirm{
+    position:fixed;inset:0;z-index:30;
+    display:flex;align-items:center;justify-content:center;padding:22px;
+    background:rgba(13,16,23,.6);
+    animation:fadeIn .18s var(--ease);
+  }
+  .sheet-confirm-card{
+    width:100%;max-width:340px;text-align:center;
+    background:var(--cream);border:3px solid var(--text-dark);border-radius:18px;
+    padding:26px 22px 22px;box-shadow:8px 8px 0 var(--red);
+  }
+  .sheet-confirm-card p{
+    font-family:var(--cond);font-size:22px;text-transform:uppercase;
+    color:var(--text-dark);margin:0 0 18px;line-height:1.15;
+  }
+  .sheet-confirm-row{display:grid;gap:10px}
+  .sheet-confirm-row .btn{width:100%;padding:14px 22px;font-size:14px}
+  /* ---- the review sheet on a phone ---- */
+  @media (max-width:768px){
+    /* 36px square, and five of them side by side, is under every touch
+       target guideline there is — and the stars are the first thing the
+       sheet asks for. 48 including the padding, which still fits across
+       the narrowest phone. */
+    .rate-stars label{padding:5px}
+    .rate-stars svg{width:38px;height:38px}
+    .rate-stars{gap:4px}
+    .sheet-x{width:44px;height:44px}
+    .sheet-x svg{width:18px;height:18px}
+
+    /* The form is taller than the sheet it sits in — measured at 735px of
+       content in a 604px box, and worse once the on-screen keyboard opens.
+       That put "Send my review" below the fold with nothing to suggest it
+       was there. Sticking it to the foot keeps the way out in sight while
+       the rest is filled in.
+
+       The cream ring is a cushion: without it the form scrolls visibly
+       through the gaps either side of the rounded button. */
+    .sheet-form .btn{
+      position:sticky;bottom:0;z-index:2;
+      box-shadow:0 6px 0 var(--red-dark),
+                 0 14px 30px -12px rgba(226,59,46,.8),
+                 0 0 0 14px var(--cream);
+    }
+  }
+
+
 
   /* ---- the thank-you that replaces the form ---- */
   .sheet-done{text-align:center;padding:6px 0 2px}

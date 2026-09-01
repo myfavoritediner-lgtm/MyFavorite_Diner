@@ -1,7 +1,11 @@
 import type { Settings } from '@/lib/types';
 import BookingForm from '@/components/site/BookingForm';
+import { closedDaysLabel, parseClosedDays } from '@/lib/validation';
 
 export default function Visit({ settings }: { settings: Settings }) {
+  const closedDays = parseClosedDays(settings.closed_days);
+  const closedLabel = closedDaysLabel(closedDays);
+
   return (
     <section className="section visit" id="visit">
       <div className="wrap visit-grid">
@@ -9,7 +13,8 @@ export default function Visit({ settings }: { settings: Settings }) {
           <span className="kicker">Come See Us</span>
           <h2>Find the diner</h2>
           <p>
-            We&rsquo;re on Thappraya Road in Jomtien Complex, open every day.
+            We&rsquo;re on Thappraya Road in Jomtien Complex
+            {closedLabel ? `, open every day except ${closedLabel}` : ', open every day'}.
             Walk-ins always welcome — book ahead for bigger groups.
           </p>
 
@@ -42,7 +47,10 @@ export default function Visit({ settings }: { settings: Settings }) {
               </svg>
               <div>
                 <b>Opening Hours</b>
-                <span>{settings.hours}</span>
+                <span>
+                  {settings.hours}
+                  {closedLabel ? ` · Closed ${closedLabel}` : ''}
+                </span>
               </div>
             </li>
 
@@ -72,7 +80,7 @@ export default function Visit({ settings }: { settings: Settings }) {
         </div>
 
         <div data-fx="right">
-          <BookingForm />
+          <BookingForm closedDays={closedDays} />
         </div>
       </div>
     </section>

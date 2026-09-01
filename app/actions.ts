@@ -30,6 +30,7 @@ import {
   validateReview,
   looksAutomated,
   todayAtTheDiner,
+  parseClosedDays,
   UUID_RE,
 } from '@/lib/validation';
 import { checkRateLimit, tooManyMessage } from '@/lib/rate-limit';
@@ -119,7 +120,12 @@ export async function submitBooking(formData: FormData): Promise<ActionResult> {
     return { ok: false, error: tooManyMessage(rate.retryAfterMinutes) };
   }
 
-  const checked = validateBooking(formData);
+  // The days the diner is shut are a setting, so the check has to happen
+  // here rather than in the form: the calendar a guest is looking at may
+  // have been rendered before the owner changed them.
+  const closedDays = parseClosedDays((await getSettings()).closed_days);
+
+  const checked = validateBooking(formData, new Date(), closedDays);
   if (!checked.ok) return { ok: false, error: checked.error };
 
   const { name, phone, email, booking_date, booking_time, guests, notes } =
@@ -420,6 +426,61 @@ export async function cancelBookingByToken(
 /*  NEWSLETTER SIGNUP                                                  */
 /* ================================================================== */
 
+/**
+ * The address is already on the list.
+ *
+ * Two different situations arrive here wearing the same unique-violation
+ * error, and they want opposite things. Somebody still subscribed just gets
+ * a thank-you. Somebody who unsubscribed and has now filled the form in
+ * again is asking to come back — and used to be told "thanks" while their
+ * row stayed inactive, which kept them out of every campaign for good.
+ *
+ * Not exported: every export of a 'use server' module is a public endpoint,
+ * and this one takes an address and writes to it.
+ */
+async function welcomeBack(
+  email: string,
+  name: string | null,
+  admin: ReturnType<typeof createAdminClient>
+): Promise<ActionResult> {
+  // Rejoining means writing to a row the public role cannot even see. With
+  // no service key there is nothing safe to do, so say thanks and stop.
+  if (!admin) return { ok: true };
+
+  const { data, error } = await admin
+    .from('subscribers')
+    .update({ is_active: true, unsubscribed_at: null })
+    .eq('email', email)
+    .eq('is_active', false)
+    .select('unsubscribe_token')
+    .maybeSingle();
+
+  if (error) {
+    console.error('[subscribe] could not rejoin:', error.message);
+    return { ok: true };
+  }
+
+  // Nothing updated means they were on the list and active all along.
+  if (!data) return { ok: true };
+
+  await logActivity('subscriber.joined', `${email} rejoined the mailing list`, {
+    level: 'success',
+    meta: { source: 'website', rejoined: true },
+  });
+
+  if (emailEnabled() && data.unsubscribe_token) {
+    const settings = await getSettings();
+    const mail = welcomeEmail(
+      name,
+      brandInfo(settings),
+      unsubscribeUrl(data.unsubscribe_token)
+    );
+    await sendEmail({ to: email, subject: mail.subject, html: mail.html });
+  }
+
+  return { ok: true };
+}
+
 export async function subscribe(formData: FormData): Promise<ActionResult> {
   if (looksAutomated(formData)) return PRETEND_SUCCESS;
 
@@ -441,18 +502,28 @@ export async function subscribe(formData: FormData): Promise<ActionResult> {
   }
 
   try {
-    const supabase = await createClient();
+    // Prefer the service-role client, as the booking and review actions do.
+    //
+    // This used to run on the public client and read the new row back with
+    // .select(). Postgres applies SELECT policies to INSERT … RETURNING, and
+    // the public role deliberately has no SELECT on this table — so the read
+    // was refused, and the refusal rolled the insert back with it. Every
+    // visitor who signed up was told it had not worked, and no row was ever
+    // stored.
+    const admin = createAdminClient();
+    const supabase = admin ?? (await createClient());
 
-    const { data, error } = await supabase
+    // Generated here rather than read back, the same way submitBooking makes
+    // its cancel token: nothing has to be selected, so nothing can refuse it.
+    const unsubscribe_token = crypto.randomUUID();
+
+    const { error } = await supabase
       .from('subscribers')
-      .insert({ email, name, source: 'website' })
-      .select('unsubscribe_token')
-      .single();
+      .insert({ email, name, source: 'website', unsubscribe_token });
 
     if (error) {
-      // 23505 = unique violation: they're already on the list. Not an error
-      // worth showing — just say thanks.
-      if (error.code === '23505') return { ok: true };
+      // 23505 = unique violation: the address is already on the list.
+      if (error.code === '23505') return await welcomeBack(email, name, admin);
       console.error('[subscribe] insert failed:', error.message);
       return { ok: false, error: 'Sorry, that did not work. Please try again.' };
     }
@@ -462,12 +533,12 @@ export async function subscribe(formData: FormData): Promise<ActionResult> {
       meta: { source: 'website' },
     });
 
-    if (emailEnabled() && data?.unsubscribe_token) {
+    if (emailEnabled()) {
       const settings = await getSettings();
       const mail = welcomeEmail(
         name,
         brandInfo(settings),
-        unsubscribeUrl(data.unsubscribe_token)
+        unsubscribeUrl(unsubscribe_token)
       );
       await sendEmail({ to: email, subject: mail.subject, html: mail.html });
     }

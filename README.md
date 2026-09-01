@@ -214,6 +214,44 @@ All templates live in `lib/email/templates.ts` and use the same colours and
 type as the website: dark header with the neon script logo, checkerboard
 strip, cream content card, chunky red buttons.
 
+### Reaching the inbox instead of Junk
+
+Sending an email is the easy half. These are the parts that decide whether it
+is *delivered*, and they are all already in the code:
+
+- **Every email carries a plain-text alternative.** `htmlToText()` in
+  `lib/email/send.ts` derives it from the HTML at send time, so the two can
+  never drift. A message with no text part is one of the oldest and cheapest
+  spam signals there is.
+- **Promotions carry `List-Unsubscribe` and `List-Unsubscribe-Post`.** That is
+  what makes Gmail and Yahoo draw their own **Unsubscribe** button beside the
+  sender's name. Since February 2024 both *require* it of bulk senders.
+  Someone who uses that button stops hearing from the diner; someone who
+  cannot find a way out presses **Report spam** instead, and that is the
+  single thing that does most damage to a sending reputation.
+- **One-click unsubscribe actually works.** The header points at
+  `app/api/unsubscribe/route.ts`, not at the `/unsubscribe` page — a page
+  cannot answer the `POST` the mail provider sends. It always replies `200`:
+  a provider that gets an error may retry, then stop offering the button
+  altogether. The link a *human* clicks still goes to the page that asks them
+  to confirm.
+- **Booking emails are transactional and deliberately carry no unsubscribe
+  header.** They are a reply to something the guest just did, not a mailshot.
+
+Two rules that are easy to get wrong later:
+
+1. **`EMAIL_FROM` must be on the domain verified in Resend**, and it must
+   match the domain in the DKIM signature, or DMARC alignment fails and the
+   mail is treated as forged. If you verified `send.yourdomain.com`, send from
+   `hello@send.yourdomain.com`.
+2. **A domain may have exactly one SPF record.** If the client also uses
+   Google Workspace, do not add a second one — see below.
+
+### DNS records
+
+Full walkthrough, including exactly what to paste into Google's DNS console
+and how to check it afterwards: **[`docs/EMAIL-DNS.md`](docs/EMAIL-DNS.md)**.
+
 ---
 
 ## LINE booking alerts
@@ -369,10 +407,10 @@ when tapped.
 
 1. A guest completes the form on the website.
 2. The server validates it properly — a real date, no earlier than today in
-   Bangkok, a sitting and party size from the lists the form offers, and
-   sensible lengths on everything. The `required` and `min` attributes on
-   the inputs are a courtesy to the guest, not a control; see
-   `lib/validation.ts`.
+   Bangkok, not a day the diner is closed, a sitting and party size from the
+   lists the form offers, and sensible lengths on everything. The `required`
+   and `min` attributes on the inputs are a courtesy to the guest, not a
+   control; see `lib/validation.ts`.
 3. The server checks capacity for that date. If the day is already full they
    are asked to choose another date.
 4. The booking is saved with a private `cancel_token`.
@@ -388,6 +426,23 @@ when tapped.
 (default **5**). Once a date reaches that number the website stops accepting
 bookings for it. Cancelled bookings do not count toward the limit.
 
+### Days you are closed
+
+**Admin → Settings → Days you are closed** takes the days the diner does not
+open. They are struck through on the booking calendar and cannot be chosen,
+the Visit panel says "open every day except Mondays", and the server refuses
+one anyway — a guest with the page open from yesterday cannot slip past a
+setting that changed this morning.
+
+The date field is the site's own calendar rather than the browser's, for
+exactly this reason: `<input type="date">` has no way to grey out a single
+weekday, so the browser would keep offering a Monday and the guest would only
+find out after pressing send. See `components/site/DatePicker.tsx`.
+
+At least one day has to stay open. The picker will not let you tick all
+seven, and if the setting is edited by hand to close every day it is ignored
+rather than taking bookings off the site.
+
 ---
 
 ## How reviews work
@@ -397,6 +452,11 @@ gives a name, a rating and a few words, and sends it. Then:
 
 1. The review is saved as **pending** and the guest is thanked. Nothing they
    wrote is on the website yet, and the form told them so before they typed.
+   The form checks itself before sending: a missing rating, name or review
+   is said under the field it belongs to rather than in a browser bubble,
+   and only after the first attempt to send — being told your name is
+   required while you are still typing it is nagging. Closing the sheet with
+   something written in it asks before throwing it away.
 2. The staff LINE group gets a card with the rating and the review, and
    **Admin → Home** grows a yellow banner counting what is waiting. It is
    also written to the activity feed.
@@ -629,6 +689,28 @@ emails.
 **Typefaces:** Kaushan Script (logo), Alfa Slab One (headings), Anton
 (labels and numbers), Work Sans (body).
 
+**The favicon** is the logo, shown the way the navbar shows it:
+`public/logo-mark.png` centred on the white pill with the ink border round
+it.
+
+`scripts/generate-icons.mjs` builds it — it decodes the logo, resizes it and
+composes `app/icon.png` (256px) and `app/apple-icon.png` (180px, square and
+edge to edge, because iOS rounds the corners itself and fills anything
+transparent with black). Nothing has to be kept in step by hand: change the
+logo and run `npm run icons`.
+
+Pass a path to also write a proof sheet — each real size drawn, then blown
+up with hard pixels, so you can see what a tab will actually show:
+
+```bash
+node scripts/generate-icons.mjs proof.png
+```
+
+Worth knowing before editing the logo: a browser draws a favicon at 16px,
+and the mark is a wordmark. At that size the script lettering fills in, so
+the tab reads as the logo's colour and shape rather than as words. It is
+legible from about 32px up.
+
 ---
 
 ## Deployment
@@ -686,7 +768,8 @@ Configuration, in order of how much it will hurt to forget:
 
 Content, all editable in the admin panel with no code:
 
-- [ ] Phone number and real opening hours (**Settings**)
+- [ ] Phone number, real opening hours, and the days you are closed
+      (**Settings**) — the closed days drive the booking calendar
 - [ ] Facebook page or email address (**Settings**)
 - [ ] **Import the menu** in **Menu** — the button is on the page until the
       database has dishes in it, and brings in all 12 sections and 108 dishes
@@ -714,4 +797,5 @@ npm run lint:fix   # ESLint, fixing what it can
 npm test           # vitest, once
 npm run test:watch # vitest, watching
 npm run check      # typecheck + lint + test — run this before you push
+npm run icons      # redraw the favicon after editing the mark
 ```

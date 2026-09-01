@@ -2,10 +2,13 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { submitBooking } from '@/app/actions';
+import DatePicker from '@/components/site/DatePicker';
 import {
   BOOKING_TIMES as TIMES,
   BOOKING_GUESTS as GUESTS,
   HONEYPOT_FIELD,
+  MAX_DAYS_AHEAD,
+  addDays,
   todayAtTheDiner,
 } from '@/lib/validation';
 
@@ -33,10 +36,23 @@ function confetti(x: number, y: number) {
   }
 }
 
-export default function BookingForm() {
+export default function BookingForm({
+  closedDays = [],
+}: {
+  /** Weekday numbers the diner is shut, Sunday being 0. From Settings. */
+  closedDays?: number[];
+}) {
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
+
+  /**
+   * The date lives in state rather than in the DOM now that the field is
+   * our own calendar. It reaches the server the same way it always did —
+   * DatePicker keeps a hidden input in step with it.
+   */
+  const [date, setDate] = useState('');
+  const [dateError, setDateError] = useState('');
 
   // Decided after mount, never during render.
   //
@@ -65,6 +81,16 @@ export default function BookingForm() {
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
+
+    // The date is a hidden input now, and the browser does not run
+    // constraint validation on hidden fields — so this is the one check
+    // that has to be made by hand before checkValidity() covers the rest.
+    if (!date) {
+      setDateError('Please choose a date.');
+      document.getElementById('d')?.focus();
+      return;
+    }
+
     if (!form.checkValidity()) {
       form.reportValidity();
       return;
@@ -143,7 +169,24 @@ export default function BookingForm() {
       <div className="frow">
         <div className="f">
           <label htmlFor="d">Date *</label>
-          <input id="d" name="date" type="date" min={today || undefined} required />
+          <DatePicker
+            id="d"
+            value={date}
+            onChange={(iso) => {
+              setDate(iso);
+              setDateError('');
+            }}
+            min={today}
+            max={today ? addDays(today, MAX_DAYS_AHEAD) : ''}
+            closedDays={closedDays}
+            invalid={Boolean(dateError)}
+            describedBy={dateError ? 'd-err' : undefined}
+          />
+          {dateError ? (
+            <p className="f-err" id="d-err" role="alert">
+              {dateError}
+            </p>
+          ) : null}
         </div>
         <div className="f">
           <label htmlFor="t">Time *</label>

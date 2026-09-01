@@ -37,6 +37,9 @@ export const FALLBACK_SETTINGS: Settings = {
   email: '',
   facebook_url: '',
   hours: 'Open every day — add your real opening times',
+  /* Weekday numbers, Sunday is 0. Empty means open all week, which is what
+     the booking calendar assumes until Settings says otherwise. */
+  closed_days: '',
   address_line1: '413/11-12 Thappraya Road',
   address_line2: 'Jomtien Complex, Pattaya City, Bang Lamung, Chon Buri 20150',
   maps_url: 'https://maps.app.goo.gl/k3wm3n4QXgfEiKjy5',

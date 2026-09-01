@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run typecheck && npm run lint && npm run test",
-    "seed:menu": "node --no-warnings scripts/generate-menu-seed.ts"
+    "seed:menu": "node --no-warnings scripts/generate-menu-seed.ts",
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

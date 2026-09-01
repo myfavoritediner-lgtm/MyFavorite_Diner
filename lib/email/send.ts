@@ -41,6 +41,61 @@ export function unsubscribeUrl(token: string) {
   return `${siteUrl()}/unsubscribe?token=${token}`;
 }
 
+/**
+ * Where a mail provider unsubscribes somebody without asking them to visit
+ * the site. Gmail and Yahoo POST to this when the reader presses the
+ * "Unsubscribe" button they draw next to the sender's name.
+ *
+ * Deliberately a different path from the page above: a page cannot answer a
+ * POST, and the header has to be answered without a human present.
+ */
+export function oneClickUnsubscribeUrl(token: string) {
+  return `${siteUrl()}/api/unsubscribe?token=${token}`;
+}
+
+/**
+ * A plain-text twin of an HTML email.
+ *
+ * Worth the trouble for two reasons: a message with no text part looks like
+ * bulk mail to a spam filter, and the handful of people reading in a client
+ * that will not render HTML currently get nothing at all.
+ */
+export function htmlToText(html: string): string {
+  return (
+    html
+      // Anything not meant to be read.
+      .replace(/<(style|script|head)[\s\S]*?<\/\1>/gi, '')
+      // Keep the destination of a link, since the text alone loses it.
+      .replace(
+        /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
+        (_m, href: string, text: string) => {
+          const label = text.replace(/<[^>]+>/g, '').trim();
+          if (!label) return href;
+          return href.includes(label) ? label : `${label} (${href})`;
+        }
+      )
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div|tr|h[1-6]|li|table)>/gi, '\n')
+      .replace(/<li\b[^>]*>/gi, '- ')
+      .replace(/<[^>]+>/g, '')
+      // The entities these templates actually emit.
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#0?39;|&apos;/g, "'")
+      .replace(/&rsquo;/g, '’')
+      .replace(/&mdash;/g, '—')
+      .replace(/&ndash;/g, '–')
+      // Tidy the whitespace the tags left behind.
+      .replace(/[ \t]+/g, ' ')
+      .replace(/ *\n */g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  );
+}
+
 type SendArgs = {
   to: string | string[];
   subject: string;
@@ -63,6 +118,8 @@ export async function sendEmail({ to, subject, html, replyTo }: SendArgs) {
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
+      // A message with no plain-text alternative reads as bulk to a filter.
+      text: htmlToText(html),
       replyTo: replyTo ?? process.env.EMAIL_REPLY_TO ?? undefined,
     });
 
@@ -83,6 +140,13 @@ export type OutgoingEmail = {
   html: string;
   /** Opaque id, so the caller can record exactly who has been mailed. */
   ref?: string;
+  /**
+   * This recipient's own one-click unsubscribe endpoint. Set it on anything
+   * that is a mailshot rather than a reply to something the guest just did:
+   * it becomes the List-Unsubscribe header, which is what Gmail and Yahoo
+   * have required of bulk senders since February 2024.
+   */
+  unsubscribeUrl?: string;
 };
 
 /**
@@ -121,7 +185,25 @@ export async function sendBatch(
           to: [m.to],
           subject: m.subject,
           html: m.html,
+          text: htmlToText(m.html),
           replyTo,
+          /**
+           * The two headers that put an "Unsubscribe" button beside the
+           * sender's name in Gmail. Readers who use it stop hearing from
+           * the diner instead of pressing "Report spam", which is the
+           * single thing that does most damage to a sending reputation.
+           *
+           * List-Unsubscribe-Post is what makes it one click: the provider
+           * POSTs to the URL itself rather than opening it in a browser.
+           */
+          ...(m.unsubscribeUrl
+            ? {
+                headers: {
+                  'List-Unsubscribe': `<${m.unsubscribeUrl}>`,
+                  'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+                },
+              }
+            : {}),
         }))
       );
 

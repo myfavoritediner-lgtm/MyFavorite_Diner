@@ -2,12 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getSettings } from '@/lib/queries';
 import {
   sendEmail,
   sendBatch,
   brandInfo,
   unsubscribeUrl,
+  oneClickUnsubscribeUrl,
   type OutgoingEmail,
 } from '@/lib/email/send';
 import {
@@ -1178,17 +1180,42 @@ export async function sendCampaign(id: string) {
       brand,
       unsubscribeUrl(s.unsubscribe_token)
     );
-    return { to: s.email, subject: mail.subject, html: mail.html, ref: s.id };
+    return {
+      to: s.email,
+      subject: mail.subject,
+      html: mail.html,
+      ref: s.id,
+      // Puts Gmail's own Unsubscribe button on the message. See sendBatch.
+      unsubscribeUrl: oneClickUnsubscribeUrl(s.unsubscribe_token),
+    };
   });
 
   const res = await sendBatch(messages, async (chunk) => {
     const rows = chunk
       .filter((m) => m.ref)
       .map((m) => ({ campaign_id: id, subscriber_id: m.ref as string }));
-    if (rows.length) {
-      await supabase.from('campaign_sends').upsert(rows, {
-        onConflict: 'campaign_id,subscriber_id',
-      });
+    if (!rows.length) return;
+
+    /**
+     * supabase-js hands errors back as a value rather than throwing, so this
+     * result has to be looked at. It was not, which is how the whole
+     * mechanism failed silently: the write was refused by row level
+     * security, the table stayed empty, and a resumed send re-mailed
+     * everyone who had already received the poster.
+     *
+     * Throwing is deliberate — sendBatch catches it and makes it loud,
+     * without abandoning a send that is already going out.
+     */
+    const admin = createAdminClient();
+    const { error } = await (admin ?? supabase)
+      .from('campaign_sends')
+      .upsert(rows, { onConflict: 'campaign_id,subscriber_id' });
+
+    if (error) {
+      throw new Error(
+        `could not record ${rows.length} delivered emails — a retry would ` +
+          `send them again (${error.message})`
+      );
     }
   });
 
@@ -1205,6 +1232,25 @@ export async function sendCampaign(id: string) {
       error:
         `${res.error} ${res.sent} of ${messages.length} emails were sent. ` +
         `Press send again to finish — the ones already delivered will be skipped.`,
+    };
+  }
+
+  /**
+   * With no Resend key configured, sendBatch reports success without having
+   * sent anything and says so with `skipped`. That was not checked, so the
+   * campaign was marked 'sent' with a full recipient count and became
+   * unusable for good — it can no longer be sent (that requires 'draft') and
+   * no longer be edited (saveCampaign skips sent rows), and nobody received
+   * a word of it. Put it back in the drawer instead.
+   */
+  if (res.skipped) {
+    await release('draft', 'Email is not configured, so nothing was sent.');
+    revalidatePath(`/admin/campaigns/${id}`);
+    return {
+      ok: false,
+      error:
+        'Email is not set up, so this was not sent to anyone. ' +
+        'Add RESEND_API_KEY and EMAIL_FROM, then send it again.',
     };
   }
 

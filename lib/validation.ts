@@ -50,9 +50,94 @@ export const SETTING_KEYS: string[] = [
   'address_line1',
   'address_line2',
   'hours',
+  'closed_days',
   'maps_url',
   'max_bookings_per_day',
 ];
+
+/* ------------------------------------------------------------------ */
+/* the days the diner is shut                                          */
+/* ------------------------------------------------------------------ */
+
+/** Sunday first, matching getUTCDay() and the order the admin lists them. */
+export const WEEKDAYS = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+] as const;
+
+/**
+ * The `closed_days` setting, as stored: the weekday numbers the diner is
+ * shut, comma separated. "1" is closed Mondays, "0,1" Sundays and Mondays,
+ * an empty string open all week.
+ *
+ * Anything that isn't a weekday number is dropped rather than rejected —
+ * this is read on the way to rendering a calendar, and a typo in one
+ * setting should not take the booking form down with it.
+ */
+export function parseClosedDays(value: string | null | undefined): number[] {
+  if (!value) return [];
+
+  const days = new Set<number>();
+  for (const part of String(value).split(',')) {
+    const text = part.trim();
+    // Number('') and Number(' ') are both 0, so a stray or trailing comma
+    // would otherwise read as "closed Sundays".
+    if (!text) continue;
+
+    const n = Number(text);
+    if (Number.isInteger(n) && n >= 0 && n <= 6) days.add(n);
+  }
+
+  // All seven would leave no bookable date at all, and a booking form that
+  // refuses every day is worse than one that ignores the setting. The admin
+  // panel stops this being saved; this is the backstop if it is set by hand.
+  if (days.size === 7) return [];
+
+  return [...days].sort((a, b) => a - b);
+}
+
+/**
+ * The weekday of a plain YYYY-MM-DD date.
+ *
+ * Parsed as UTC on purpose. These are calendar dates, not instants — read
+ * in the machine's local zone instead, a date would land on the previous
+ * weekday for anyone west of Greenwich.
+ */
+export function weekdayOf(iso: string): number {
+  return new Date(iso + 'T00:00:00Z').getUTCDay();
+}
+
+export function isClosedDay(iso: string, closedDays: number[]): boolean {
+  return closedDays.includes(weekdayOf(iso));
+}
+
+/**
+ * The closed days written out: "Mondays", "Mondays and Tuesdays",
+ * "Mondays, Tuesdays and Sundays". Empty when the diner is open all week.
+ *
+ * Lives here so the calendar, the Visit panel and anything else that has to
+ * say it all say it the same way.
+ */
+export function closedDaysLabel(closedDays: number[]): string {
+  const names = closedDays.map((d) => `${WEEKDAYS[d]}s`);
+  if (names.length <= 1) return names[0] ?? '';
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+/** The first day from `iso` onwards that the diner is actually open. */
+export function nextOpenDay(iso: string, closedDays: number[]): string {
+  let day = iso;
+  // Seven steps reaches every weekday; parseClosedDays guarantees one is open.
+  for (let i = 0; i < 7 && isClosedDay(day, closedDays); i++) {
+    day = addDays(day, 1);
+  }
+  return day;
+}
 
 /**
  * The name of the hidden field both public forms carry. A real guest never
@@ -76,7 +161,8 @@ export function todayAtTheDiner(now: Date = new Date()): string {
   }).format(now);
 }
 
-function addDays(iso: string, days: number): string {
+/** Moves a plain YYYY-MM-DD date on by a number of days. UTC, as above. */
+export function addDays(iso: string, days: number): string {
   const d = new Date(iso + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
@@ -104,7 +190,8 @@ export type BookingInput = {
 
 export function validateBooking(
   formData: FormData,
-  now: Date = new Date()
+  now: Date = new Date(),
+  closedDays: number[] = []
 ): Checked<BookingInput> {
   const name = String(formData.get('name') ?? '').trim();
   const phone = String(formData.get('phone') ?? '').trim();
@@ -163,6 +250,16 @@ export function validateBooking(
   }
   if (booking_date > addDays(today, MAX_DAYS_AHEAD)) {
     return fail('That is too far ahead — please book within the next year.');
+  }
+
+  // The calendar greys these out, so a guest using the form cannot get here.
+  // Anything that does reach it either has stale settings open in a tab or
+  // is posting straight past the form.
+  if (isClosedDay(booking_date, closedDays)) {
+    return fail(
+      `Sorry, we're closed on ${WEEKDAYS[weekdayOf(booking_date)]}s. ` +
+        'Please choose another day.'
+    );
   }
 
   return {

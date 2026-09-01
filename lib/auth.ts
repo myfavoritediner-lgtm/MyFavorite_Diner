@@ -32,32 +32,57 @@ export async function getUser() {
  * stranger who registered a minute ago. is_staff() is a SECURITY DEFINER
  * function created by supabase/schema.sql.
  */
-export async function isStaff(): Promise<boolean> {
+export type StaffCheck =
+  /** Named in public.staff. */
+  | 'staff'
+  /** Signed in, or not, but not staff either way. */
+  | 'no'
+  /** The staff list could not be consulted — see the note below. */
+  | 'unavailable';
+
+async function checkStaff(): Promise<StaffCheck> {
   try {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return false;
+    if (!user) return 'no';
 
     const { data, error } = await supabase.rpc('is_staff');
 
     if (error) {
-      // The hardening migration hasn't been run yet. Fall back to the old
-      // behaviour — any signed-in user — rather than locking the diner out
-      // of their own admin panel. The warning says what to do about it.
-      console.warn(
-        '[auth] is_staff() is unavailable, so every signed-in user is being ' +
-          'treated as staff. Run supabase/schema.sql. ' +
+      /**
+       * Fail closed.
+       *
+       * This used to return true here, so that a database missing the
+       * hardening migration could not lock the owner out of their own admin
+       * panel. The trade was the wrong way round: it meant any error from
+       * this one call — a missing function, a dropped connection, a typo in
+       * a later migration — silently promoted *every confirmed account* to
+       * staff. Paired with Supabase's public signup being on by default,
+       * that is a stranger registering an account and reading every booking.
+       *
+       * Refusing instead cannot lock anybody out permanently: the staff list
+       * is repaired by running supabase/schema.sql against the database,
+       * which never went through this panel in the first place.
+       */
+      console.error(
+        '[auth] is_staff() failed, so access is being refused. ' +
+          'If this says the function does not exist, run supabase/schema.sql. ' +
           `(${error.message})`
       );
-      return true;
+      return 'unavailable';
     }
 
-    return data === true;
+    return data === true ? 'staff' : 'no';
   } catch {
-    return false;
+    return 'no';
   }
+}
+
+/** True only when the caller is named in public.staff. */
+export async function isStaff(): Promise<boolean> {
+  return (await checkStaff()) === 'staff';
 }
 
 export type Denied = { ok: false; error: string };
@@ -70,7 +95,20 @@ export type Denied = { ok: false; error: string };
  *   if (denied) return denied;
  */
 export async function requireStaff(): Promise<Denied | null> {
-  if (await isStaff()) return null;
+  const result = await checkStaff();
+  if (result === 'staff') return null;
+
+  // Being told to sign in again, over and over, by a panel that was never
+  // going to let you in is the worst version of this. Say which it is.
+  if (result === 'unavailable') {
+    return {
+      ok: false,
+      error:
+        'The staff list could not be checked, so nothing can be changed. ' +
+        'Run supabase/schema.sql against the database, then try again.',
+    };
+  }
+
   return {
     ok: false,
     error: 'Your session has expired. Please sign in again.',

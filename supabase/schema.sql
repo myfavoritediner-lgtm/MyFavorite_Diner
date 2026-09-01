@@ -99,6 +99,13 @@ create index if not exists bookings_status_idx on public.bookings(status);
 -- ---------------------------------------------------------------------
 -- 5. SITE SETTINGS  (phone, hours, address — editable without code)
 -- ---------------------------------------------------------------------
+-- Rows are created on the first save, so an empty table is normal — the
+-- admin panel names its own fields and fills them in blank.
+--
+-- One key has a shape worth knowing: `closed_days` holds the weekday
+-- numbers the diner is shut, comma separated, Sunday being 0. '1' is closed
+-- Mondays, '0,1' Sundays and Mondays, empty open all week. The booking
+-- calendar greys those days out and app/actions.ts refuses them.
 create table if not exists public.site_settings (
   key        text primary key,
   value      text,
@@ -799,9 +806,16 @@ create table if not exists public.campaign_sends (
 
 alter table public.campaign_sends enable row level security;
 
+-- Staff need to WRITE this table, not only read it. With a select-only
+-- policy the upsert that records each delivered batch was rejected, the
+-- table stayed empty, and a send resumed after a partial failure re-mailed
+-- everyone who had already received the poster — the exact thing this table
+-- exists to prevent.
 drop policy if exists "staff read campaign sends" on public.campaign_sends;
-create policy "staff read campaign sends" on public.campaign_sends
-  for select to authenticated using (public.is_staff());
+drop policy if exists "staff record campaign sends" on public.campaign_sends;
+create policy "staff record campaign sends" on public.campaign_sends
+  for all to authenticated
+  using (public.is_staff()) with check (public.is_staff());
 
 -- A send interrupted by a deploy or a timeout would otherwise sit in
 -- 'sending' forever. Anything stuck for over an hour goes back to draft.
