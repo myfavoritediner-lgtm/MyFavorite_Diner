@@ -7,6 +7,16 @@ import CampaignEditor from '@/components/admin/CampaignEditor';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Sending a promotion is a Server Action posted to this route, so this is
+ * where its time limit is set. Five minutes is the platform maximum.
+ *
+ * sendBatch paces itself against the same number and stops at four minutes,
+ * handing back a result that can be resumed rather than being killed with
+ * a batch delivered and nothing written down.
+ */
+export const maxDuration = 300;
+
 export default async function CampaignPage({
   params,
 }: {

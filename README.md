@@ -247,6 +247,39 @@ Two rules that are easy to get wrong later:
 2. **A domain may have exactly one SPF record.** If the client also uses
    Google Workspace, do not add a second one — see below.
 
+### Sending to a large list
+
+A promotion goes out in batches of 100, the most Resend accepts per call,
+and the run is built to survive the things that actually go wrong:
+
+- **Paced.** Roughly one batch every 0.6s, which stays under Resend's rate
+  limit rather than racing into it.
+- **Retried.** A rate limit or a 502 is retried up to four times with a
+  widening gap. A rejected key or a malformed address is not — it will fail
+  identically forever, and retrying only delays telling somebody.
+- **Recorded as it goes.** Every delivered batch is written to
+  `campaign_sends` before the next one is sent. Pressing send again skips
+  everyone already mailed.
+- **Stopped before the clock runs out.** The run gives up at four minutes,
+  inside the platform's five, so the batch in flight is finished and
+  recorded rather than the function being killed with a hundred addresses
+  delivered and nothing written down.
+- **Never carries on unrecorded.** If a delivered batch cannot be written
+  to `campaign_sends`, the run stops there. Continuing would mean the next
+  attempt has no idea those addresses were mailed and sends to them twice.
+
+Booking confirmations and alerts get one retry on the same basis — somebody
+is waiting for those.
+
+**The limit you will meet first is your Resend plan, not this code.** The
+free tier is 3,000 emails a month and 100 a day, so a list of 500 cannot be
+mailed in one go until the plan is raised.
+
+**Warm up a new domain.** Do not send to the whole list on day one. A domain
+with no sending history suddenly emitting thousands looks exactly like a
+compromised account, and it is the fastest way to land in Junk no matter how
+good the DNS is.
+
 ### DNS records
 
 Full walkthrough, including exactly what to paste into Google's DNS console

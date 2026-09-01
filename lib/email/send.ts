@@ -112,26 +112,46 @@ export async function sendEmail({ to, subject, html, replyTo }: SendArgs) {
     return { ok: true, skipped: true as const };
   }
 
-  try {
-    const { error } = await client().emails.send({
-      from: process.env.EMAIL_FROM!,
-      to: Array.isArray(to) ? to : [to],
-      subject,
-      html,
-      // A message with no plain-text alternative reads as bulk to a filter.
-      text: htmlToText(html),
-      replyTo: replyTo ?? process.env.EMAIL_REPLY_TO ?? undefined,
-    });
+  const message = {
+    from: process.env.EMAIL_FROM!,
+    to: Array.isArray(to) ? to : [to],
+    subject,
+    html,
+    // A message with no plain-text alternative reads as bulk to a filter.
+    text: htmlToText(html),
+    replyTo: replyTo ?? process.env.EMAIL_REPLY_TO ?? undefined,
+  };
 
-    if (error) {
-      console.error('[email] send failed:', error);
-      return { ok: false, error: error.message };
+  /**
+   * One retry, because these are the emails somebody is waiting for.
+   *
+   * This is the confirmation a guest expects after booking, and the alert
+   * the diner needs in order to know about it. A rate limit or a bad second
+   * on the network should not be the reason either goes missing. A rejected
+   * key or a malformed address will fail the same way twice, so those are
+   * not retried.
+   */
+  let lastError = 'Could not send email.';
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await sleep(1500);
+
+    try {
+      const { error } = await client().emails.send(message);
+      if (!error) return { ok: true };
+
+      lastError = error.message;
+      if (!isTransientEmailError(error)) break;
+      console.warn(`[email] send failed (${error.message}), retrying once`);
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : String(e);
+      if (!isTransientEmailError(e)) break;
+      console.warn(`[email] send threw (${lastError}), retrying once`);
     }
-    return { ok: true };
-  } catch (e) {
-    console.error('[email] unexpected error:', e);
-    return { ok: false, error: 'Could not send email.' };
   }
+
+  console.error('[email] send failed:', lastError);
+  return { ok: false, error: lastError };
 }
 
 export type OutgoingEmail = {
@@ -158,6 +178,56 @@ export type OutgoingEmail = {
  * are already on record and the retry skips them instead of mailing those
  * people a second time.
  */
+/* ------------------------------------------------------------------ */
+/* sending a lot of them at once                                       */
+/* ------------------------------------------------------------------ */
+
+/** Resend accepts roughly two requests a second. This stays under it. */
+const RATE_GAP_MS = 600;
+/** Attempts per batch, the first one included. */
+const MAX_ATTEMPTS = 4;
+/** How long to wait before each retry. */
+const BACKOFF_MS = [2000, 6000, 15000];
+/**
+ * Stop before the platform kills the function mid-batch.
+ *
+ * Vercel allows 300 seconds. Leaving a minute of margin means the batch in
+ * flight finishes, gets recorded, and the caller is handed a result it can
+ * resume from — rather than the whole function vanishing with a hundred
+ * addresses delivered and nothing written down.
+ */
+const DEADLINE_MS = 240_000;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Worth trying again, or not.
+ *
+ * A rate limit or a 502 is the network having a bad second. A malformed
+ * address or a rejected API key will fail identically forever, and retrying
+ * it three times only delays telling somebody.
+ */
+export function isTransientEmailError(error: unknown): boolean {
+  const e = error as
+    | { name?: string; statusCode?: number; message?: string }
+    | null
+    | undefined;
+
+  const status = e?.statusCode ?? 0;
+  if (status === 429 || (status >= 500 && status < 600)) return true;
+
+  const text = `${e?.name ?? ''} ${e?.message ?? ''}`.toLowerCase();
+  return (
+    text.includes('rate limit') ||
+    text.includes('too many') ||
+    text.includes('timeout') ||
+    text.includes('timed out') ||
+    text.includes('econnreset') ||
+    text.includes('socket hang up') ||
+    text.includes('fetch failed')
+  );
+}
+
 export async function sendBatch(
   messages: OutgoingEmail[],
   onChunkSent?: (sent: OutgoingEmail[]) => Promise<void>
@@ -172,62 +242,113 @@ export async function sendBatch(
   const from = process.env.EMAIL_FROM!;
   const replyTo = process.env.EMAIL_REPLY_TO ?? undefined;
   const resend = client();
+  const startedAt = Date.now();
 
   let sent = 0;
   const CHUNK = 100;
 
   for (let i = 0; i < messages.length; i += CHUNK) {
-    const chunk = messages.slice(i, i + CHUNK);
-    try {
-      const { error } = await resend.batch.send(
-        chunk.map((m) => ({
-          from,
-          to: [m.to],
-          subject: m.subject,
-          html: m.html,
-          text: htmlToText(m.html),
-          replyTo,
-          /**
-           * The two headers that put an "Unsubscribe" button beside the
-           * sender's name in Gmail. Readers who use it stop hearing from
-           * the diner instead of pressing "Report spam", which is the
-           * single thing that does most damage to a sending reputation.
-           *
-           * List-Unsubscribe-Post is what makes it one click: the provider
-           * POSTs to the URL itself rather than opening it in a browser.
-           */
-          ...(m.unsubscribeUrl
-            ? {
-                headers: {
-                  'List-Unsubscribe': `<${m.unsubscribeUrl}>`,
-                  'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-                },
-              }
-            : {}),
-        }))
-      );
-
-      if (error) {
-        console.error('[email] batch failed:', error);
-        return { ok: false, sent, error: error.message };
-      }
-
-      sent += chunk.length;
-
-      // Record before continuing. A failure here is not worth abandoning a
-      // send over, but it does mean a retry could double up, so it's loud.
-      if (onChunkSent) {
-        try {
-          await onChunkSent(chunk);
-        } catch (e) {
-          console.error('[email] could not record a sent batch:', e);
-        }
-      }
-    } catch (e) {
-      console.error('[email] batch error:', e);
-      return { ok: false, sent, error: 'Sending stopped partway through.' };
+    // Hand back something resumable rather than being killed mid-flight.
+    if (Date.now() - startedAt > DEADLINE_MS) {
+      return {
+        ok: false,
+        sent,
+        error:
+          `Stopped after ${sent} to stay inside the time limit.`,
+      };
     }
+
+    const chunk = messages.slice(i, i + CHUNK);
+
+    const payload = chunk.map((m) => ({
+      from,
+      to: [m.to],
+      subject: m.subject,
+      html: m.html,
+      text: htmlToText(m.html),
+      replyTo,
+      /**
+       * The two headers that put an "Unsubscribe" button beside the
+       * sender's name in Gmail. Readers who use it stop hearing from
+       * the diner instead of pressing "Report spam", which is the
+       * single thing that does most damage to a sending reputation.
+       *
+       * List-Unsubscribe-Post is what makes it one click: the provider
+       * POSTs to the URL itself rather than opening it in a browser.
+       */
+      ...(m.unsubscribeUrl
+        ? {
+            headers: {
+              'List-Unsubscribe': `<${m.unsubscribeUrl}>`,
+              'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            },
+          }
+        : {}),
+    }));
+
+    /**
+     * A rate limit used to end the whole send. It is the one failure a big
+     * list is most likely to hit, and the least worth giving up over, so
+     * each batch gets a few attempts with a widening gap between them.
+     */
+    let delivered = false;
+    let lastError = 'Sending stopped partway through.';
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS && !delivered; attempt++) {
+      if (attempt > 0) await sleep(BACKOFF_MS[attempt - 1]);
+
+      try {
+        const { error } = await resend.batch.send(payload);
+        if (!error) {
+          delivered = true;
+          break;
+        }
+
+        lastError = error.message;
+        if (!isTransientEmailError(error)) break;
+        console.warn(
+          `[email] batch ${i / CHUNK + 1} failed (${error.message}) — ` +
+            `attempt ${attempt + 1} of ${MAX_ATTEMPTS}`
+        );
+      } catch (e) {
+        lastError = e instanceof Error ? e.message : String(e);
+        if (!isTransientEmailError(e)) break;
+        console.warn(`[email] batch threw (${lastError}), retrying`);
+      }
+    }
+
+    if (!delivered) {
+      console.error('[email] batch failed for good:', lastError);
+      return { ok: false, sent, error: lastError };
+    }
+
+    sent += chunk.length;
+
+    /**
+     * Recording is not optional. These addresses have been delivered to; if
+     * the note of that cannot be written, a resumed send has no way to know
+     * and would mail them a second time. Stopping here limits that to the
+     * one batch instead of the whole remaining list.
+     */
+    if (onChunkSent) {
+      try {
+        await onChunkSent(chunk);
+      } catch (e) {
+        console.error('[email] could not record a sent batch:', e);
+        return {
+          ok: false,
+          sent,
+          error:
+            `${sent} were delivered, but the last ${chunk.length} could not ` +
+            `be recorded — sending again may repeat those.`,
+        };
+      }
+    }
+
+    // Pace the next request rather than racing into a rate limit.
+    if (i + CHUNK < messages.length) await sleep(RATE_GAP_MS);
   }
 
   return { ok: true, sent };
 }
+
