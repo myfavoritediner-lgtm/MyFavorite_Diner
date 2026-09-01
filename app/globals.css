@@ -850,6 +850,24 @@
 
   /* two columns of dishes, with dotted leaders to the price */
   .fm-list{list-style:none;columns:2;column-gap:52px}
+/* ---- the full menu, revealed as you scroll to it ---- */
+  /* The section itself fades and lifts via [data-fx="up"]. The dishes then
+     come in just behind their heading, in three short tiers rather than one
+     delay per dish — a 30-dish section staggered individually would still
+     be arriving long after you had started reading it.
+
+     Nothing here needs a reduced-motion guard of its own: the global
+     prefers-reduced-motion block already flattens [data-fx] and cuts every
+     animation to almost nothing. */
+  .fm-sec.in .fm-item{animation:fmItem .5s var(--ease-out) both}
+  .fm-sec.in .fm-item:nth-child(n+3){animation-delay:70ms}
+  .fm-sec.in .fm-item:nth-child(n+6){animation-delay:140ms}
+  .fm-sec.in .fm-item:nth-child(n+9){animation-delay:200ms}
+  @keyframes fmItem{
+    from{opacity:0;transform:translateY(12px)}
+    to{opacity:1;transform:none}
+  }
+
   .fm-item{
     break-inside:avoid;margin-bottom:26px;
     display:flex;gap:15px;align-items:flex-start;

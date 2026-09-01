@@ -128,7 +128,7 @@ export default function FullMenu({ menu }: { menu: MenuData }) {
       <div className="wrap">
         {groups.map((g) => (
           <section className="fm-group" key={g.name}>
-            <div className="fm-group-head">
+            <div className="fm-group-head" data-fx="up">
               <h2>{g.name}</h2>
               <p>{g.blurb}</p>
               <span className="fm-group-line" aria-hidden="true" />
@@ -136,7 +136,15 @@ export default function FullMenu({ menu }: { menu: MenuData }) {
 
             {g.sections.map((s) => {
               return (
-                <section className="fm-sec" id={`sec-${s.slug}`} key={s.slug}>
+                <section
+                  className="fm-sec"
+                  id={`sec-${s.slug}`}
+                  key={s.slug}
+                  /* Revealed as you reach it, rather than the whole price
+                     list being there from the start. Effects adds .in; the
+                     dishes inside then lift in just behind the heading. */
+                  data-fx="up"
+                >
                   <h3 className="fm-ribbon">
                     <span>{s.name}</span>
                   </h3>
