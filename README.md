@@ -22,13 +22,23 @@ Supabase (Postgres, Auth, Storage) · Resend (email)
 - [LINE booking alerts](#line-booking-alerts)
 - [The admin panel](#the-admin-panel)
 - [How bookings work](#how-bookings-work)
+- [How reviews work](#how-reviews-work)
 - [How promotions work](#how-promotions-work)
+- [Search engine optimisation](#search-engine-optimisation)
 - [Monitoring](#monitoring)
-- [Project structure](#project-structure)
-- [Design system](#design-system)
 - [Deployment](#deployment)
 - [Troubleshooting](#troubleshooting)
+- [Before the site goes live](#before-the-site-goes-live)
 - [Commands](#commands)
+
+### Other documents
+
+| | |
+| --- | --- |
+| **[Admin Guide](docs/ADMIN-GUIDE.md)** | **For the restaurant.** How to sign in and run the site day to day — bookings, prices, photos, reviews, opening hours and promotions. No technical knowledge needed. Start here if you are staff. |
+| [`docs/DNS.md`](docs/DNS.md) | Setting up the domain and the email DNS records |
+| [`SECURITY.md`](SECURITY.md) | How the site protects itself — for whoever maintains the code |
+| [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Architecture and conventions — for whoever maintains the code |
 
 ---
 
@@ -36,28 +46,29 @@ Supabase (Postgres, Auth, Storage) · Resend (email)
 
 ```bash
 npm install
-cp .env.example .env.local     # fill in your Supabase and Resend keys
+cp .env.example .env.local     # then fill in your own values
 npm run dev
 ```
 
 Open <http://localhost:3000>.
 
 The site runs **without any configuration** — if Supabase is not connected it
-falls back to the sample menu in `lib/fallback-data.ts`, so you always see a
-complete page. Bookings, the mailing list and the admin panel require Supabase.
+falls back to the written-in menu, so you always see a complete page.
+Bookings, the mailing list and the admin panel require Supabase.
 
 ---
 
 ## Environment variables
 
-Copy `.env.example` to `.env.local` and fill in the following.
+Copy `.env.example` to `.env.local` and fill in the following. `.env.example`
+contains placeholders only; it is the template, never real values.
 
 | Variable | Required | Purpose |
 | --- | :---: | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Public key, safe in the browser |
-| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | **Secret.** Server-only. Powers unsubscribe links, guest cancellations, capacity checks and the activity log |
-| `RESEND_API_KEY` | ✅ | Email delivery |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | **Secret.** Powers unsubscribe links, guest cancellations, capacity checks and the activity log |
+| `RESEND_API_KEY` | ✅ | **Secret.** Email delivery |
 | `EMAIL_FROM` | ✅ | Sender address. **Both this and the API key are required** — without it, email is silently disabled |
 | `EMAIL_REPLY_TO` | — | Where guest replies go |
 | `ADMIN_NOTIFY_EMAIL` | — | Who is alerted about new bookings. Falls back to the email in Admin → Settings |
@@ -65,118 +76,61 @@ Copy `.env.example` to `.env.local` and fill in the following.
 | `LINE_CHANNEL_ACCESS_TOKEN` | — | **Secret.** Sends the booking alert to LINE |
 | `LINE_CHANNEL_SECRET` | — | **Secret.** Verifies that webhook calls really came from LINE |
 | `LINE_TARGET_ID` | — | Which LINE chat gets the alerts. Comma-separate for several |
-| `CRON_SECRET` | — | **Secret.** Signs the nightly purge job. Without it, `/api/cron/purge` is refused in production |
+| `CRON_SECRET` | — | **Secret.** Signs the nightly housekeeping job |
 | `GOOGLE_SITE_VERIFICATION` | — | Search Console ownership check |
 
-> **Never commit `.env.local`.** It is git-ignored. The service role key
-> bypasses all database security — treat it like a password.
+> **Never commit `.env.local`.** It is ignored by git. Anything marked
+> **Secret** above belongs in Vercel's environment settings and in
+> `.env.local`, and nowhere else. The service role key in particular bypasses
+> all database security — treat it like a password.
 
 > **`ADMIN_NOTIFY_EMAIL` is not optional in practice.** If it is empty *and*
-> the email field in Admin → Settings is empty, a booking is saved and
-> nobody is told about it. Set one of the two before you take real
-> bookings.
+> the email field in Admin → Settings is empty, a booking is saved and nobody
+> is told about it. Set one of the two before taking real bookings.
 
 ---
 
 ## Database setup
 
-1. Create a project at [supabase.com](https://supabase.com) (the free tier is
-   sufficient for a restaurant of this size).
-2. Open **SQL Editor → New query** and run these files in order:
+1. Create a project at [supabase.com](https://supabase.com). The free tier is
+   sufficient for a restaurant of this size.
+2. Open **SQL Editor → New query** and run these files:
 
-   | File | What it creates |
+   | File | What it does |
    | --- | --- |
-   | `supabase/schema.sql` | **Everything.** Menu, gallery, bookings, reviews, settings, mailing list, campaigns, activity log, poster storage, cancel links — then the staff allowlist, tightened policies, rate limiting and data retention |
-   | `supabase/seed-menu.sql` | **The menu** — every section and dish from `lib/menu-data.ts`, so staff can edit prices and photos in the admin panel. Optional: **Admin → Menu** offers the same import as a button |
-   | `supabase/cleanup-sample-data.sql` | Removes the stock photos and placeholder review an older `seed.sql` left behind *(only needed if you ever ran it)* |
+   | `supabase/schema.sql` | **Everything.** Menu, gallery, bookings, reviews, settings, mailing list, promotions, activity log, poster storage, cancel links, staff access, rate limiting and data retention |
+   | `supabase/seed-menu.sql` | **The menu** — all 12 sections and 108 dishes, so staff can edit prices and photos in the panel. Optional: **Admin → Menu** offers the same import as a button |
+   | `supabase/cleanup-sample-data.sql` | Only needed if an older version's sample content was ever loaded. Removes the stock photos and placeholder review it left behind |
 
-   `schema.sql` was seven files that had to be run in a particular order, and
-   getting that order wrong was the easiest way to end up with a half-built
-   database. Every statement guards itself — including all 38 row-level
-   security policies, which have no `if not exists` form of their own and so
-   are each preceded by a `drop policy if exists` — so running it again on a
-   database that already has some of this is safe.
-
-   `seed-menu.sql` is generated, never edited by hand:
-
-   ```bash
-   npm run seed:menu     # rebuilds it from lib/menu-data.ts
-   ```
-
-   It is also safe to re-run against Supabase. A dish is inserted only if
-   that section has nothing by that name yet, so staff edits survive and a
-   second run only fills in what is new. That does mean it cannot push a
-   price change into a database that already has the dish — change those in
-   **Admin → Menu**, which is the whole point of the menu living in Postgres.
+   Both of the first two are safe to run again. `schema.sql` guards every
+   statement, and `seed-menu.sql` only adds dishes that are missing, so staff
+   edits are never overwritten.
 
 3. Create the admin login: **Authentication → Users → Add user**. Enter the
    restaurant's email and a password, and tick *Auto Confirm User*.
 4. **Turn off public signup.** Authentication → Sign In / Providers → switch
-   off *Allow new users to sign up*. See the security model below for why
-   this matters more than it sounds like it does.
+   off *Allow new users to sign up*.
 5. Restart the dev server and sign in at `/admin/login`.
 
-> **Where the menu actually lives.** Once there is a single dish in the
-> database, the database *is* the menu: **Admin → Menu** and the website
-> show the same thing, and a dish or a section deleted there is gone from
-> the site for good.
->
-> `lib/menu-data.ts` is the written source it starts from — the site renders
-> it with no database at all, which is why `npm run dev` shows a complete
-> menu on a fresh clone, and it is what comes back if the menu ends up with
-> no dishes in it at all. Getting it into Postgres is either `seed-menu.sql`
-> or the **Import the printed menu** button that Admin → Menu shows while
-> there is nothing to edit; both add only what is missing and never touch a
-> price already set in the panel.
->
-> It did not always work this way. The written menu used to be merged in
-> **per section**, so a section the database had emptied fell back to the
-> written one — which meant deleting the last dish in a section, or the
-> section itself, brought the old list straight back and nothing could
-> really be removed from the control panel.
->
-> There used to be a `seed.sql` full of stock photos and invented dishes.
-> It has been removed: four of its section slugs collided with real ones,
-> so running it replaced real dishes with Unsplash burgers. If you ran it at
-> any point, `cleanup-sample-data.sql` takes the residue back out.
+> **Where the menu lives.** Once there is a single dish in the database, the
+> database *is* the menu — **Admin → Menu** and the website show the same
+> thing, and a dish or section deleted there is gone from the site for good.
+> Before then, the site shows the written-in menu so it is never empty.
 
-### Security model
+**Adding another member of staff:** create the user in Supabase
+Authentication, then add them to the staff list:
 
-Row Level Security is enabled on every table. In short:
+```sql
+insert into public.staff (user_id, email) values ('<their-uuid>', '<their-email>');
+```
 
-- **Visitors** can read the menu, gallery and reviews, and can insert a booking
-  or a mailing-list signup. They cannot read bookings or subscribers.
-- **Staff** — the people listed in the `staff` table — have full access.
-- **The service role** is used only on the server, for the things a
-  logged-out visitor legitimately needs: unsubscribing, cancelling their own
-  booking, checking whether a date is full, and counting requests for rate
-  limiting.
+To remove someone, delete their row — their access to the panel stops
+immediately. Anyone on that list has full control of the site, so it is worth
+reading whenever someone joins or leaves:
 
-> **Why the `staff` table exists.** Policies used to be granted `to
-> authenticated`, which in Supabase means *any confirmed account*, not
-> "your staff". Since anyone can call the signup endpoint with the
-> publishable key that ships in the browser bundle, a stranger could
-> register with their own address, confirm it, and then read every booking
-> and subscriber. `schema.sql` re-scopes every policy to an
-> explicit allowlist. Disabling public signup as well means the door is
-> locked and so is the safe.
-
-To add another member of staff: create the user in Supabase Authentication,
-then `insert into public.staff (user_id, email) values ('<their-uuid>',
-'<their-email>');`. To remove someone, delete their row — their login stops
-working on the admin panel immediately.
-
-### Rate limiting
-
-The booking form, the mailing-list signup and the cancellation link are all
-open to the internet, and each one costs something to serve — a database
-write, up to two emails, a LINE push. `lib/rate-limit.ts` counts requests
-per IP address in a Postgres table and turns away anything excessive. The
-limits live at the top of that file. It fails open on purpose: losing a
-real table costs the diner more than letting a burst through.
-
-Both public forms also carry a hidden honeypot field. Anything that fills
-it in is thanked politely and discarded.
+```sql
+select * from public.staff;
+```
 
 ---
 
@@ -192,12 +146,11 @@ month.
    EMAIL_FROM=My Favorite Diner <hello@yourdomain.com>
    ```
    To test before your domain is verified, use `onboarding@resend.dev`. It
-   works immediately but only delivers to the address you registered with
-   Resend.
+   works immediately but only delivers to the address registered with Resend.
 3. Set `ADMIN_NOTIFY_EMAIL` so the restaurant is told about new bookings.
 
-If Resend is not configured, email is skipped and logged to the console — the
-site keeps working.
+If Resend is not configured, email is skipped and logged — the site keeps
+working.
 
 ### Automatic emails
 
@@ -210,87 +163,37 @@ site keeps working.
 | Mailing-list signup | Subscriber | Welcome email |
 | Promotion sent | All active subscribers | The poster, each with a personal unsubscribe link |
 
-All templates live in `lib/email/templates.ts` and use the same colours and
-type as the website: dark header with the neon script logo, checkerboard
-strip, cream content card, chunky red buttons.
-
 ### Reaching the inbox instead of Junk
 
-Sending an email is the easy half. These are the parts that decide whether it
-is *delivered*, and they are all already in the code:
+The delivery side is already handled in the code — plain-text alternatives,
+the one-click unsubscribe header Gmail and Yahoo require of bulk senders, and
+transactional booking emails kept separate from mailshots. Two rules are yours
+to get right:
 
-- **Every email carries a plain-text alternative.** `htmlToText()` in
-  `lib/email/send.ts` derives it from the HTML at send time, so the two can
-  never drift. A message with no text part is one of the oldest and cheapest
-  spam signals there is.
-- **Promotions carry `List-Unsubscribe` and `List-Unsubscribe-Post`.** That is
-  what makes Gmail and Yahoo draw their own **Unsubscribe** button beside the
-  sender's name. Since February 2024 both *require* it of bulk senders.
-  Someone who uses that button stops hearing from the diner; someone who
-  cannot find a way out presses **Report spam** instead, and that is the
-  single thing that does most damage to a sending reputation.
-- **One-click unsubscribe actually works.** The header points at
-  `app/api/unsubscribe/route.ts`, not at the `/unsubscribe` page — a page
-  cannot answer the `POST` the mail provider sends. It always replies `200`:
-  a provider that gets an error may retry, then stop offering the button
-  altogether. The link a *human* clicks still goes to the page that asks them
-  to confirm.
-- **Booking emails are transactional and deliberately carry no unsubscribe
-  header.** They are a reply to something the guest just did, not a mailshot.
-
-Two rules that are easy to get wrong later:
-
-1. **`EMAIL_FROM` must be on the domain verified in Resend**, and it must
-   match the domain in the DKIM signature, or DMARC alignment fails and the
-   mail is treated as forged. If you verified `send.yourdomain.com`, send from
-   `hello@send.yourdomain.com`.
-2. **A domain may have exactly one SPF record.** If the client also uses
-   Google Workspace, do not add a second one — see below.
-
-### Sending to a large list
-
-A promotion goes out in batches of 100, the most Resend accepts per call,
-and the run is built to survive the things that actually go wrong:
-
-- **Paced.** Roughly one batch every 0.6s, which stays under Resend's rate
-  limit rather than racing into it.
-- **Retried.** A rate limit or a 502 is retried up to four times with a
-  widening gap. A rejected key or a malformed address is not — it will fail
-  identically forever, and retrying only delays telling somebody.
-- **Recorded as it goes.** Every delivered batch is written to
-  `campaign_sends` before the next one is sent. Pressing send again skips
-  everyone already mailed.
-- **Stopped before the clock runs out.** The run gives up at four minutes,
-  inside the platform's five, so the batch in flight is finished and
-  recorded rather than the function being killed with a hundred addresses
-  delivered and nothing written down.
-- **Never carries on unrecorded.** If a delivered batch cannot be written
-  to `campaign_sends`, the run stops there. Continuing would mean the next
-  attempt has no idea those addresses were mailed and sends to them twice.
-
-Booking confirmations and alerts get one retry on the same basis — somebody
-is waiting for those.
-
-**The limit you will meet first is your Resend plan, not this code.** The
-free tier is 3,000 emails a month and 100 a day, so a list of 500 cannot be
-mailed in one go until the plan is raised.
+1. **`EMAIL_FROM` must be on the domain verified in Resend**, and must match
+   the domain in the DKIM signature, or the mail is treated as forged. If you
+   verified `send.yourdomain.com`, send from `hello@send.yourdomain.com`.
+2. **A domain may have exactly one SPF record.** If the restaurant also uses
+   Google Workspace, do not add a second one.
 
 **Warm up a new domain.** Do not send to the whole list on day one. A domain
 with no sending history suddenly emitting thousands looks exactly like a
-compromised account, and it is the fastest way to land in Junk no matter how
-good the DNS is.
+compromised account.
+
+**The limit you will meet first is the Resend plan, not the code.** The free
+tier is 3,000 emails a month and 100 a day, so a list of 500 cannot be mailed
+in one go until the plan is raised.
 
 ### DNS records
 
-Full walkthrough for this domain specifically — what to paste into
-**GoDaddy's** DNS console, in what order, and how to check it afterwards:
-**[`docs/DNS.md`](docs/DNS.md)**. It also covers pointing the domain at
-Vercel when the owner is ready to retire the old site.
+Full walkthrough for this domain — what to paste into **GoDaddy's** DNS
+console, in what order, and how to check it afterwards:
+**[`docs/DNS.md`](docs/DNS.md)**. It also covers pointing the domain at Vercel.
 
-> One thing in there is urgent rather than eventual: the domain already
-> carries a GoDaddy-created DMARC record set to `p=quarantine`, with no SPF
-> or DKIM to satisfy it. Anything sent from the domain before those records
-> exist is asked to prove itself, cannot, and is quarantined.
+> One item there is urgent rather than eventual: the domain already carries a
+> GoDaddy-created DMARC record set to `p=quarantine`, with no SPF or DKIM to
+> satisfy it. Anything sent from the domain before those records exist is
+> asked to prove itself, cannot, and is quarantined.
 
 ---
 
@@ -302,140 +205,101 @@ that actually gets read — email is the backup.
 
 > **Heads up:** LINE Notify, the one-token service every older tutorial
 > describes, was shut down on **31 March 2025**. This uses the Messaging API,
-> which is its replacement. Ignore any guide that mentions `notify-api.line.me`.
+> its replacement. Ignore any guide mentioning `notify-api.line.me`.
 
 ### Setup
 
-1. **Create the Official Account.** Go to the
+1. **Create the Official Account.** In the
    [LINE Developers Console](https://developers.line.biz/console/), create a
-   provider, then a **Messaging API** channel. This also creates a free LINE
-   Official Account.
+   provider, then a **Messaging API** channel.
 2. **Get the token.** Channel → **Messaging API** tab → *Channel access token
    (long-lived)* → **Issue**. Put it in `LINE_CHANNEL_ACCESS_TOKEN`.
 3. **Get the secret.** Channel → **Basic settings** → *Channel secret*. Put it
    in `LINE_CHANNEL_SECRET`.
 4. **Turn off the autoresponder.** Messaging API tab → *Auto-reply messages* →
-   **Disable**, or the bot answers every message in your group.
+   **Disable**, or the bot answers every message in the group.
 5. **Point the webhook at the site.** Messaging API tab → *Webhook URL* →
-   `https://yourdomain.com/api/line/webhook` → **Update**, then turn
-   **Use webhook** on. Press **Verify** — it should say Success.
-6. **Find the chat id.** Add the bot to your staff group (or add it as a friend
-   for a one-to-one alert). It replies with the id as soon as it joins. If that
+   `https://yourdomain.com/api/line/webhook` → **Update**, then turn **Use
+   webhook** on. Press **Verify** — it should say Success.
+6. **Find the chat id.** Add the bot to the staff group (or as a friend for a
+   one-to-one alert). It replies with the id as soon as it joins. If that
    message scrolls away, send **`id`** in the chat and it will repeat it.
-7. **Set `LINE_TARGET_ID`** to that value and redeploy. To alert more than one
-   place, separate the ids with commas.
+7. **Set `LINE_TARGET_ID`** to that value and redeploy. Separate several ids
+   with commas.
 8. **Check it.** Admin → Settings → **Send a test to LINE**.
 
 ### What gets sent
 
 | Trigger | Card |
 | --- | --- |
-| Booking submitted | Red header, the guest's name, date, time, party size, phone, email and notes, with a button to the admin panel |
-| Guest cancels via their link | Dark header, the same details — the table is free again |
-| Staff confirm a booking | Green header, the same details, and whether the guest was actually emailed |
-| Staff cancel a booking | Dark header, noting it came from the admin panel rather than the guest |
-| Staff delete a booking | Dark header. Read before the row is deleted, so the card can still name it |
-| Anything that fails | Dark red header, what broke and the underlying error |
+| Booking submitted | Red header — name, date, time, party size, phone, email and notes, with a button to the panel |
+| Guest cancels via their link | Dark header, same details — the table is free again |
+| Staff confirm a booking | Green header, and whether the guest was actually emailed |
+| Staff cancel or delete a booking | Dark header, noting it came from the panel |
+| Anything that fails | Dark red header, what broke |
 
-That last row is the useful one. Any failure recorded at error level anywhere
-in the app is pushed to LINE — a rejected email, a purge that could not run, a
-database error during a booking — without each one having to be wired up by
-hand. `logActivity(..., { alert: false })` opts a specific error out.
+**Repeats are suppressed** — the same kind of failure sends one card per half
+hour, so a mail provider having a bad morning cannot exhaust the monthly
+allowance. The activity log still records every occurrence.
 
-**Repeats are suppressed.** The same kind of failure sends one card per half
-hour. A mail provider having a bad morning would otherwise send one per
-booking, and the free LINE plan allows only a few hundred messages a month.
-The activity log still records every occurrence — the throttle applies to LINE,
-not to the history. Suppression is tracked both in memory and in Postgres, so
-several serverless instances cannot each send their own copy.
+Admin → Home shows how much of the monthly allowance is left and warns before
+it runs out.
 
-Admin → Home shows how much of the monthly allowance is left, and warns before
-it runs out. When it does run out LINE simply refuses new pushes, which would
-otherwise look exactly like nothing happening.
-
-The admin button only appears when `NEXT_PUBLIC_SITE_URL` is an `https` address.
-LINE rejects a link to `http://localhost`, and rejecting the link would mean
-rejecting the whole message, so it is left out rather than risking the alert.
+Alerts never block a booking. The guest is told their table is requested as
+soon as it is saved, so a slow LINE is never something they sit and watch.
 
 ### If nothing arrives
 
 | Symptom | Cause and fix |
 | --- | --- |
-| Admin → Settings says *Not set up* | The two environment variables are missing. Remember to add them in Vercel, not just `.env.local` |
+| Admin → Settings says *Not set up* | The two variables are missing. Add them in Vercel, not just `.env.local` |
 | Test says `403` | The access token belongs to a different channel than the target id |
 | Test says `400` | The id is wrong — send `id` in the chat again and copy the whole value |
-| Test says `429` | You have used up the month's messages on the free plan |
-| Bot never replies with an id | *Use webhook* is off, the webhook URL is wrong, or the site is not deployed yet — LINE cannot reach `localhost` |
-
-Alerts never block a booking. The guest is told their table is requested as
-soon as it is saved, and the alert goes out straight after the reply rather
-than in front of it — so a slow LINE or a slow mail server is never something
-a guest sits and watches.
-
-A push that fails on a busy or unreachable LINE is tried once more a second
-later, reusing the same retry key so the group cannot get the same card twice.
-If it still fails, or the channel is misconfigured, the booking is safe and the
-failure is recorded in Admin → Home under *What's been happening*.
+| Test says `429` | The month's messages are used up on the free plan |
+| Bot never replies with an id | *Use webhook* is off, the URL is wrong, or the site is not deployed — LINE cannot reach `localhost` |
 
 ---
 
 ## The admin panel
 
-Sign in at `/admin/login`. `proxy.ts` redirects logged-out visitors to the
-login page, and every server action independently checks that the caller is
-staff — because a Server Action is a public POST endpoint, and the redirect
-only governs page navigation.
+Sign in at `/admin/login`. Only people on the staff list can get in.
 
 | Section | Purpose |
 | --- | --- |
 | **Home** | Key numbers, quick actions, the daily booking limit, a seven-day bookings chart, the system monitor and a plain-English activity feed |
 | **Bookings** | Every request, filtered by Today / Upcoming / Needs a reply / Past, with search and pagination. Move each through New → Confirmed → Done. Marking one *Confirmed* emails the guest automatically |
-| **Menu** | The whole menu. Sections *and* dishes can each be added, edited, reordered with arrows, hidden or deleted — prices in baht, descriptions, badges, photos (upload one, pick one the site already ships, or paste a link), the small print under a section, and which course of the full menu page a section is printed under |
-| **Gallery** | Manage the photo grid and tile sizes |
-| **Reviews** | The approval queue for reviews guests leave on the website, plus the ones you type in yourself. Approve, hide, edit, reorder or delete |
+| **Menu** | The whole menu — sections and dishes, added, edited, reordered, hidden or deleted. Prices in baht, descriptions, badges, photos, the small print under a section, and which course of the full menu page a section belongs to |
+| **Gallery** | The photo grid and tile sizes |
+| **Reviews** | The approval queue for reviews guests leave, plus ones you type in yourself. Approve, hide, edit, reorder or delete |
 | **Subscribers** | The mailing list. Add people manually, unsubscribe them, or copy all addresses |
 | **Promotions** | Upload a poster, preview it exactly as subscribers will see it, send a test, then send to everyone |
 | **Settings** | Phone, email, address, opening hours and Maps link — plus a full system status report |
 
 ### Editing the menu
 
-Everything on the menu is editable from **Admin → Menu**; nothing about it
-needs SQL or a code change.
+Everything on the menu is editable from **Admin → Menu**; none of it needs SQL
+or a code change.
 
 The page shows **one section at a time**, chosen from the same tabs the
-website uses, so the list under them is ten rows rather than all hundred and
-eight. Each row carries the dish's photograph, so it can be scanned rather
-than read. Pressing a row opens it in a panel over the page — a form opened
-*inside* the list pushed everything below it down the screen, which moved
-the row you were working on as you started working on it. The search box
-above the tabs looks through every dish on the menu at once, by name,
+website uses. Each row carries the dish's photograph, so the list can be
+scanned rather than read. Pressing a row opens it in a panel over the page.
+The search box above the tabs looks through every dish at once, by name,
 description or item number.
 
-- **Sections** — add one, rename it, give it the small print that appears
-  under the heading (*"all burgers served with shoestring fries"*), move it
-  up or down, hide it, or delete it. Deleting a section deletes the dishes
-  in it, and the button says how many before you agree to it.
-- **Dishes** — add, edit, move up or down within the section, hide with one
-  press of the eye without losing anything, or delete. Editing a dish can
-  also move it to a different section. Delete lives inside the edit panel,
-  where you can see what you are about to remove.
-- **Photos** — upload one (it goes to Supabase Storage, which does not
-  expire the way a Facebook link does), pick one of the ~120 dish
-  photographs the site already ships, or paste a link.
+- **Sections** — add, rename, give the small print that appears under the
+  heading (*"all burgers served with shoestring fries"*), move up or down,
+  hide, or delete. Deleting a section deletes the dishes in it, and the button
+  says how many before you agree.
+- **Dishes** — add, edit, move within the section, hide with one press of the
+  eye without losing anything, or delete. Editing a dish can also move it to
+  another section.
+- **Photos** — upload one (it goes to Supabase Storage, which does not expire
+  the way a Facebook link does), pick one of the ~110 dish photographs the
+  site already ships, or paste a link.
 - **Courses** — the chapters on `/menu` (*From the Grill*, *Breakfast, All
-  Day*, …). Each section says which one it belongs to; leave it empty and
-  the arrangement written in `lib/menu-data.ts` decides. Typing a name that
-  does not exist yet creates that course.
+  Day*, …). Typing a name that does not exist yet creates that course.
 
-The order is set with arrows rather than a *sort order* number box. The
-number is still what the database stores — the first press on a section
-where everything was left at the default numbers them from the top, and
-after that a move is a single swap.
-
-> The hero headline is **not** a setting. It lives in
-> `components/site/Hero.tsx`, because it has to sit exactly right against
-> the artwork. `supabase/schema.sql` clears the old `hero_line` rows that
-> used to override it.
+Order is set with arrows rather than a number box.
 
 The panel is fully responsive: tables become cards on phones, the navigation
 collapses into a dropdown, and every input uses 16px text so iOS does not zoom
@@ -446,17 +310,15 @@ when tapped.
 ## How bookings work
 
 1. A guest completes the form on the website.
-2. The server validates it properly — a real date, no earlier than today in
-   Bangkok, not a day the diner is closed, a sitting and party size from the
-   lists the form offers, and sensible lengths on everything. The `required`
-   and `min` attributes on the inputs are a courtesy to the guest, not a
-   control; see `lib/validation.ts`.
-3. The server checks capacity for that date. If the day is already full they
-   are asked to choose another date.
-4. The booking is saved with a private `cancel_token`.
+2. The server checks it properly — a real date, no earlier than today in
+   Bangkok, not a day the diner is closed, and a sitting and party size from
+   the lists the form offers.
+3. The server checks capacity for that date. If the day is full they are asked
+   to choose another.
+4. The booking is saved with a private cancel link.
 5. The guest receives a confirmation email; the restaurant receives an alert
-   by LINE and by email, including anything the guest wrote in the notes box.
-6. Staff mark it **Confirmed** in the admin panel, which emails the guest.
+   by LINE and by email, including anything written in the notes box.
+6. Staff mark it **Confirmed** in the panel, which emails the guest.
 7. The guest can cancel at any time using the link in their email — no phone
    call, no account. The table is freed and the restaurant is notified.
 
@@ -471,17 +333,10 @@ bookings for it. Cancelled bookings do not count toward the limit.
 **Admin → Settings → Days you are closed** takes the days the diner does not
 open. They are struck through on the booking calendar and cannot be chosen,
 the Visit panel says "open every day except Mondays", and the server refuses
-one anyway — a guest with the page open from yesterday cannot slip past a
+one anyway — so a guest with the page open from yesterday cannot slip past a
 setting that changed this morning.
 
-The date field is the site's own calendar rather than the browser's, for
-exactly this reason: `<input type="date">` has no way to grey out a single
-weekday, so the browser would keep offering a Monday and the guest would only
-find out after pressing send. See `components/site/DatePicker.tsx`.
-
-At least one day has to stay open. The picker will not let you tick all
-seven, and if the setting is edited by hand to close every day it is ignored
-rather than taking bookings off the site.
+At least one day has to stay open. The picker will not let you tick all seven.
 
 ---
 
@@ -492,54 +347,19 @@ gives a name, a rating and a few words, and sends it. Then:
 
 1. The review is saved as **pending** and the guest is thanked. Nothing they
    wrote is on the website yet, and the form told them so before they typed.
-   The form checks itself before sending: a missing rating, name or review
-   is said under the field it belongs to rather than in a browser bubble,
-   and only after the first attempt to send — being told your name is
-   required while you are still typing it is nagging. Closing the sheet with
-   something written in it asks before throwing it away.
-2. The staff LINE group gets a card with the rating and the review, and
-   **Admin → Home** grows a yellow banner counting what is waiting. It is
-   also written to the activity feed.
+2. The staff LINE group gets a card, and **Admin → Home** grows a yellow
+   banner counting what is waiting.
 3. Someone opens **Admin → Reviews**, reads it, and presses **Approve** — at
    which point it joins the rotation in the red band on the homepage — or
    **Hide**, or **Delete**.
 
 Reviews you add yourself (copied from Google, Facebook or TripAdvisor) skip
-the queue and go live immediately: somebody typed those in deliberately, so
-approving them again would be theatre.
+the queue and go live immediately.
 
-The sheet the guest fills in starts with the stars, and starts them **empty**
-rather than at five — a pre-filled five stars is a leading question, and a
-wall of fives nobody meant tells you nothing. They fill as the pointer sweeps
-across them and say what they mean in words underneath. Sending swaps the
-form for a thank-you that explains the approval step, rather than closing the
-sheet out from under someone who just wrote a paragraph.
-
-### Why a stranger cannot publish to your homepage
-
-Three independent things, because this is the only public form whose content
-is meant to end up on the site:
-
-- **The status is set on the server**, never read from the submitted form.
-- **Row level security agrees.** The insert policy in `schema.sql` accepts a
-  review only when it is `pending` and `source = 'guest'`. The anon key ships
-  inside the browser bundle, so anyone can call the REST API directly with
-  it — and the worst that gets them is a row in the queue staff are already
-  reading. Reading the queue back is not possible either; the select policy
-  is approved-only.
-- **A database missing those columns is refused.** If `schema.sql` has not
-  been run, `status` would fall back to its column default of `approved` and
-  publish unread. The other public forms drop a missing column and save
-  anyway; this one deliberately fails instead.
-
-Add to that: the honeypot field every public form carries, a limit of three
-reviews per address per hour, and a rejection of anything containing a web
-link — a link in a restaurant review is almost always someone advertising,
-and a queue only works while it is short enough to read.
-
-Every action in `app/admin/reviews/actions.ts` checks `requireStaff()` first.
-A Server Action is a public POST endpoint, so without that check whoever left
-a review could approve it themselves.
+Nothing a stranger writes can reach the homepage without someone approving it
+first. Reviews are also limited to three per address per hour, and anything
+containing a web link is rejected — a link in a restaurant review is almost
+always advertising.
 
 ---
 
@@ -549,60 +369,48 @@ Promotions are poster-first — design the artwork wherever you like (Canva, a
 phone app, a designer) and send it as the email.
 
 1. **Promotions → New promotion.**
-2. **Upload the poster.** Drag it in or tap to choose; it uploads to Supabase
-   Storage and appears in the preview immediately.
-3. **Write the subject line** and optional preview text — this is what shows in
-   the inbox.
-4. Optionally add a headline and message below the poster. Leave them empty to
-   send the poster on its own.
+2. **Upload the poster.** Drag it in or tap to choose; it appears in the
+   preview immediately.
+3. **Write the subject line** and optional preview text — this is what shows
+   in the inbox.
+4. Optionally add a headline and message below the poster.
 5. **Send a test** to yourself, check it in a real inbox, then **send to all
    subscribers**. Each recipient gets a personal unsubscribe link.
 
 Sent promotions are locked and cannot be edited — create a new one instead.
 
-> The preview pane calls the *same function* the sending code calls, so what
-> you see can never drift from what is delivered.
+**Sending is safe to click twice.** A double click or a second tab is turned
+away rather than starting a second send, and every delivered address is
+recorded as it goes — so if a batch fails halfway, pressing send again
+finishes the job and skips whoever already has the poster.
 
-**Sending is safe to click twice.** The campaign row is claimed before any
-email goes out, so a double click or a second tab is turned away rather than
-starting a second send. Every delivered address is recorded as it goes, so
-if a batch fails halfway, pressing send again finishes the job and skips
-whoever already has the poster. Both of these need
-`schema.sql`; without it, sending still works but goes back to
-being a single-shot operation you should not retry.
+The preview pane calls the same code the sending does, so what you see cannot
+drift from what is delivered.
 
 ---
 
 ## Search engine optimisation
 
 The site ships SEO-ready. No plugin, no configuration beyond setting
-`NEXT_PUBLIC_SITE_URL`.
+`NEXT_PUBLIC_SITE_URL`: page metadata, restaurant and menu structured data
+(every dish and price, marked up with THB offers), breadcrumbs,
+`sitemap.xml`, `robots.txt`, and a branded social share image.
 
-| Feature | Where | Purpose |
-| --- | --- | --- |
-| Page metadata | `app/layout.tsx` | Title template, description, keywords, canonical URL, Open Graph and Twitter cards |
-| Restaurant structured data | `lib/seo.ts` → `components/site/StructuredData.tsx` | schema.org `Restaurant` with address, geo coordinates, cuisine, price range and a `ReserveAction` |
-| Menu structured data | same | Every dish and price marked up as `Menu` / `MenuItem` with THB offers |
-| Breadcrumbs | same | Site structure shown beneath the search result |
-| `sitemap.xml` | `app/sitemap.ts` | Submit this URL in Google Search Console |
-| `robots.txt` | `app/robots.ts` | Allows the public site, blocks `/admin`, `/api`, `/cancel`, `/unsubscribe` |
-| Social share image | `app/opengraph-image.tsx` | Branded 1200×630 card generated at request time |
+Business details in the structured data come from **Admin → Settings**, so the
+phone number and address Google sees stay in sync automatically.
 
-### Going live checklist
+### Going live
 
 1. Set `NEXT_PUBLIC_SITE_URL` to the production domain — every canonical URL,
    sitemap entry and structured-data ID is derived from it.
-2. Add the property in [Google Search Console](https://search.google.com/search-console),
-   put the verification string in `GOOGLE_SITE_VERIFICATION`, redeploy, verify.
+2. Add the property in
+   [Google Search Console](https://search.google.com/search-console), put the
+   verification string in `GOOGLE_SITE_VERIFICATION`, redeploy, verify.
 3. Submit `https://yourdomain.com/sitemap.xml`.
-4. Validate the markup with the
+4. Validate with the
    [Rich Results Test](https://search.google.com/test/rich-results).
 5. Claim the **Google Business Profile** and link the website. For a local
    restaurant this outranks everything else on this list.
-
-Business details in the structured data come from **Admin → Settings**, so the
-phone number and address Google sees stay in sync automatically. Update the
-coordinates in `lib/seo.ts` if you want them pin-accurate.
 
 ---
 
@@ -610,153 +418,22 @@ coordinates in `lib/seo.ts` if you want them pin-accurate.
 
 - **Admin → Home** opens with a red alert when something is genuinely broken,
   and carries the full **System monitor** further down, next to the activity
-  feed — so "is anything wrong?" and "what just happened?" are one glance
-  apart. Problems are listed in plain English; the checks that are fine stay
-  collapsed behind *Show details* so the page does not turn into noise.
-- **Admin → Settings → System status** shows the same monitor, for when you
-  are already in there setting something up.
+  feed. Problems are listed in plain English; healthy checks stay collapsed
+  behind *Show details*.
+- **Admin → Settings → System status** shows the same monitor.
 - Every check: database connectivity and response time, the booking table,
-  the service role key, email configuration, whether a new booking actually
-  reaches anybody, LINE alerts, how much of the LINE monthly allowance is
-  left, the site URL and the activity log.
+  email configuration, whether a new booking actually reaches anybody, LINE
+  alerts and how much of the monthly allowance is left, the site URL and the
+  activity log.
 - **`GET /api/health`** returns JSON, with HTTP **503** when a critical
   dependency is down and **200** otherwise. Point a free uptime monitor
-  (UptimeRobot, BetterStack, Vercel) at it for alerts. Anyone can reach this
-  URL, so the public answer is only check names and a traffic light — the
-  detail behind each check includes your sending address and raw database
-  errors, and is returned only to signed-in staff.
+  (UptimeRobot, BetterStack, Vercel) at it for alerts.
 - The **activity log** records bookings, signups, unsubscribes, cancellations,
-  menu edits, promotions and failed emails. It is trimmed to 5,000 rows by
-  the nightly purge job. Anything recorded at error level is also pushed to
-  LINE, throttled to one card per kind of problem per half hour — see
-  [LINE booking alerts](#line-booking-alerts).
-- **`GET /api/cron/purge`** runs housekeeping once a night (02:00 Bangkok,
-  scheduled in `vercel.json`): deletes bookings older than twelve months,
-  forgets people who unsubscribed over a year ago, clears spent rate-limit
-  windows, trims the activity log and releases any promotion left stuck
-  mid-send. Signed with `CRON_SECRET`.
-
----
-
-## Project structure
-
-```
-proxy.ts                    runs before /admin requests (was middleware.ts)
-vercel.json                 the nightly housekeeping schedule
-app/
-  page.tsx                  public homepage — statically cached, keep it that way
-  layout.tsx                fonts and global metadata
-  icon.png, apple-icon.png  favicon and home-screen icon
-  error.tsx                 a page threw
-  global-error.tsx          the layout itself threw
-  not-found.tsx             wrong address
-  globals.css               the entire theme — colour tokens at the top
-  actions.ts                bookings, capacity, signup, unsubscribe, cancel
-  cancel/                   guest-facing booking cancellation
-  unsubscribe/              one-click unsubscribe
-  api/health/               machine-readable status endpoint
-  api/cron/purge/           nightly retention and housekeeping
-  api/line/webhook/         LINE webhook — verifies signatures, hands back chat ids
-  admin/
-    login/  bookings/  menu/  gallery/  reviews/
-    subscribers/  campaigns/  campaigns/[id]/  settings/
-    loading.tsx             skeleton — every admin page is force-dynamic
-    actions.ts              admin server actions, each guarded by requireStaff
-components/
-  site/                     public sections (Hero, Menu, Gallery, Subscribe…)
-  admin/                    admin UI
-lib/
-  supabase/                 browser, server, session and service-role clients
-  email/
-    templates.ts            all email HTML — also drives the live preview
-    send.ts                 Resend wrapper, single and resumable batched sending
-  line.ts                   LINE push + the booking and cancellation cards
-  auth.ts                   requireStaff — the guard on every admin action
-  validation.ts             what the server accepts from a stranger
-  rate-limit.ts             per-IP limits on the public forms
-  queries.ts                data fetching with sample-content fallback
-  fallback-data.ts          sample gallery/reviews/settings before Supabase
-  menu-data.ts              the printed menu — what a new install imports
-  health.ts                 system checks
-  log.ts                    activity logging
-  types.ts                  shared types
-scripts/
-  generate-menu-seed.ts     turns menu-data.ts into supabase/seed-menu.sql
-supabase/                   schema, the generated menu seed, sample cleanup
-tests/                      vitest — validation, email templates, capacity
-```
-
-### Notable decisions
-
-- **Email templates are pure functions** with no server-only imports, so the
-  admin preview renders identical markup to what is sent.
-- **Email HTML uses tables and inline styles** because Gmail strips `<style>`
-  blocks and Outlook ignores flexbox.
-- **Bookings are inserted without `RETURNING`.** The public role can insert but
-  deliberately cannot select, so the cancel token is generated in application
-  code rather than read back.
-- **The site degrades gracefully** at every layer: no Supabase → sample
-  content; no Resend → emails logged; no activity table → feed shows a setup
-  hint. Nothing throws in the guest's face. The hardening features follow the
-  same rule — if `schema.sql` hasn't been run, rate limiting and
-  the staff check log a warning and let the request through rather than
-  locking the diner out of their own site.
-- **The homepage must not read cookies or headers.** Doing so silently opts
-  the route out of static rendering. `next build` prints `○ /` when it is
-  cached and `ƒ /` when it is not; that is the check.
-- **Server Actions are public POST endpoints.** Being behind `/admin` in the
-  browser protects nothing, which is why every admin action starts with
-  `await requireStaff()`.
-
----
-
-## Design system
-
-All colours are CSS custom properties at the top of `app/globals.css`:
-
-| Token | Value | Use |
-| --- | --- | --- |
-| `--red` | `#E23B2E` | Primary actions, accents |
-| `--yellow` | `#FFC22C` | Neon sign, highlights |
-| `--cyan` | `#2FE3F5` | Neon tube lighting |
-| `--cream` | `#FFF4E0` | Light surfaces |
-| `--ink` | `#141821` | Dark background |
-
-Change one value and it updates site-wide. The same palette is mirrored in
-`tailwind.config.ts` for the admin panel and in `lib/email/templates.ts` for
-emails.
-
-**Typefaces:** Kaushan Script (logo), Alfa Slab One (headings), Anton
-(labels and numbers), Work Sans (body).
-
-**The favicon** is the logo, carried the way the navbar carries it:
-`public/logo-mark.png` on white, with no border of its own — the outline in
-the header belongs to the nav bar, not to the mark inside it.
-
-The white is not a style choice. The script lettering in `logo-mark.png` is
-knocked out rather than painted — some 15,000 transparent pixels inside the
-sign — so the words are whatever shows through from behind. On a transparent
-icon over a dark browser tab they vanish entirely. Run
-`node scripts/generate-icons.mjs proof.png` and the proof sheet shows each
-size on a light strip and a dark one, which is how that was caught.
-
-`scripts/generate-icons.mjs` builds it — it decodes the logo, resizes it and
-composes `app/icon.png` (256px) and `app/apple-icon.png` (180px, square and
-edge to edge, because iOS rounds the corners itself and fills anything
-transparent with black). Nothing has to be kept in step by hand: change the
-logo and run `npm run icons`.
-
-Pass a path to also write a proof sheet — each real size drawn, then blown
-up with hard pixels, so you can see what a tab will actually show:
-
-```bash
-node scripts/generate-icons.mjs proof.png
-```
-
-Worth knowing before editing the logo: a browser draws a favicon at 16px,
-and the mark is a wordmark. At that size the script lettering fills in, so
-the tab reads as the logo's colour and shape rather than as words. It is
-legible from about 32px up.
+  menu edits, promotions and failed emails.
+- **Housekeeping runs nightly** at 02:00 Bangkok: it deletes bookings older
+  than twelve months, forgets people who unsubscribed over a year ago, and
+  trims the activity log. Guest names, phone numbers and notes are personal
+  data under Thailand's PDPA, so this retention window matters — leave it on.
 
 ---
 
@@ -778,40 +455,35 @@ and cancellation links are all built from it.
 
 | Symptom | Cause and fix |
 | --- | --- |
-| *"Sorry, something went wrong"* on the booking form | Usually the database migrations have not all been run. Check the server console for the Postgres error code |
+| *"Sorry, something went wrong"* on the booking form | Usually `supabase/schema.sql` has not been fully run |
 | No emails arriving | `EMAIL_FROM` is missing — **both** it and `RESEND_API_KEY` are required. Check Admin → Settings → System status |
 | Emails only reach your own address | You are still using `onboarding@resend.dev`. Verify your domain in Resend |
 | Email links point at localhost | Set `NEXT_PUBLIC_SITE_URL` to the live domain |
 | Poster upload says *bucket not found* | Run `supabase/schema.sql` |
 | Activity feed shows a setup message | Run `supabase/schema.sql` |
 | Unsubscribe or cancel links fail | `SUPABASE_SERVICE_ROLE_KEY` is missing |
-| Console warns that `is_staff()` is unavailable | `supabase/schema.sql` has not been run. Until it is, every signed-in account is treated as staff |
-| Console warns that the public forms are unprotected | Same migration — `bump_rate_limit()` is missing |
-| Staff can sign in but every save fails | They have a Supabase account but no row in `public.staff` |
-| `next build` prints `ƒ /` instead of `○ /` | Something in the homepage tree started reading cookies or headers, which makes the page dynamic |
-| A promotion says it is "already being sent" | A previous send was interrupted. The nightly purge releases anything stuck for over an hour, or set `status = 'draft'` by hand |
-| *"That link is not a photo we can show"* when saving a photo | The link is not an image file on a host the site is allowed to load from. Use the upload button, or see `lib/image-hosts.mjs` |
-| A photo saved earlier does not appear on the site | Same reason, saved before that check existed. It is skipped rather than shown — find it in Admin → Gallery or Admin → Menu and re-upload it |
+| The panel refuses every change, and the console mentions the staff check | `supabase/schema.sql` has not been run. Until it is, the panel refuses everyone rather than letting anyone in — run it and access returns |
+| Someone signs in and the panel says *"Not your panel"* | They have a Supabase account but are not on the staff list. Add them, or remove the account |
+| A promotion says it is *already being sent* | A previous send was interrupted. The nightly housekeeping releases anything stuck for over an hour |
+| *"That link is not a photo we can show"* when saving a photo | The link is not an image file on a host the site is allowed to load from. Use the upload button instead |
+| A photo saved earlier does not appear | Facebook photo links expire after about a week. Find it in Admin → Gallery or Menu and upload the file instead |
 
 ---
 
-## Outstanding content
-
-### Before the site goes live
+## Before the site goes live
 
 Configuration, in order of how much it will hurt to forget:
 
-- [ ] **Run `supabase/schema.sql`** and turn off public signup
-      in Supabase. Until both are done, anyone who registers an account can
-      read every booking and subscriber
-- [ ] **Set `ADMIN_NOTIFY_EMAIL`** — or fill in the email in Admin →
-      Settings. Right now a booking notifies nobody
+- [ ] **Run `supabase/schema.sql`** and turn off public signup in Supabase
+- [ ] **Set `ADMIN_NOTIFY_EMAIL`** — or fill in the email in Admin → Settings.
+      Without one, a booking notifies nobody
 - [ ] **Set `NEXT_PUBLIC_SITE_URL` to the real domain**, in Vercel as well as
-      locally. Every email link, cancel link, canonical URL, sitemap entry
-      and the LINE admin button is built from it
-- [ ] **Set `CRON_SECRET`** so the nightly purge can run
+      locally. Every email link, cancel link, canonical URL, sitemap entry and
+      the LINE admin button is built from it
+- [ ] **Set `CRON_SECRET`** so the nightly housekeeping can run
 - [ ] Finish the LINE setup — it is the alert staff will actually read
-- [ ] A verified sending domain in Resend
+- [ ] A verified sending domain in Resend, with the DNS records in
+      [`docs/DNS.md`](docs/DNS.md)
 
 Content, all editable in the admin panel with no code:
 
@@ -819,15 +491,11 @@ Content, all editable in the admin panel with no code:
       (**Settings**) — the closed days drive the booking calendar
 - [ ] Facebook page or email address (**Settings**)
 - [ ] **Import the menu** in **Menu** — the button is on the page until the
-      database has dishes in it, and brings in all 12 sections and 108 dishes
-      from `lib/menu-data.ts`, prices included. Until then the website is
-      showing that same menu, but nothing on it can be edited
-- [ ] Photos for the few dishes still sharing a general one (the printed-menu
-      artwork is already in `public/menu/dishes/`)
-- [ ] Real guest reviews. Guests can now leave their own from the homepage —
-      they queue in **Reviews** for approval — and you can type in ones from
-      Google or Facebook yourself. Until either happens the band shows sample
-      copy
+      database has dishes in it, and brings in all 12 sections and 108 dishes,
+      prices included
+- [ ] Photos for the few dishes still sharing a general one
+- [ ] Real guest reviews — guests can leave their own from the homepage, and
+      you can type in ones from Google or Facebook yourself
 - [ ] The restaurant's own photography (**Gallery**)
 
 ---
@@ -842,7 +510,7 @@ npm run typecheck  # TypeScript, no emit
 npm run lint       # ESLint
 npm run lint:fix   # ESLint, fixing what it can
 npm test           # vitest, once
-npm run test:watch # vitest, watching
 npm run check      # typecheck + lint + test — run this before you push
-npm run icons      # redraw the favicon after editing the mark
+npm run seed:menu  # rebuild supabase/seed-menu.sql from the written menu
+npm run icons      # redraw the favicon after editing the logo
 ```
