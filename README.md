@@ -37,8 +37,6 @@ Supabase (Postgres, Auth, Storage) · Resend (email)
 | --- | --- |
 | **[Admin Guide](docs/ADMIN-GUIDE.md)** | **For the restaurant.** How to sign in and run the site day to day — bookings, prices, photos, reviews, opening hours and promotions. No technical knowledge needed. Start here if you are staff. |
 | [`docs/DNS.md`](docs/DNS.md) | Setting up the domain and the email DNS records |
-| [`SECURITY.md`](SECURITY.md) | How the site protects itself — for whoever maintains the code |
-| [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Architecture and conventions — for whoever maintains the code |
 
 ---
 
