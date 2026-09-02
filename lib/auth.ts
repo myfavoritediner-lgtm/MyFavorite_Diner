@@ -40,6 +40,16 @@ export type StaffCheck =
   /** The staff list could not be consulted — see the note below. */
   | 'unavailable';
 
+/**
+ * Exported so the admin layout can tell the two failures apart and say
+ * something true about each. `requireStaff()` below flattens them into one
+ * message, which is right for a server action — a form that will not save is
+ * a form that will not save — but wrong for a page somebody is staring at.
+ */
+export async function staffStatus(): Promise<StaffCheck> {
+  return checkStaff();
+}
+
 async function checkStaff(): Promise<StaffCheck> {
   try {
     const supabase = await createClient();
