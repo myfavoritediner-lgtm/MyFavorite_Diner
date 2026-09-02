@@ -108,9 +108,24 @@ contains placeholders only; it is the template, never real values.
 
 3. Create the admin login: **Authentication → Users → Add user**. Enter the
    restaurant's email and a password, and tick *Auto Confirm User*.
-4. **Turn off public signup.** Authentication → Sign In / Providers → switch
+4. **Put that login on the staff list.** Back in **SQL Editor**, run:
+
+   ```sql
+   insert into public.staff (user_id, email)
+   select id, email from auth.users
+   on conflict (user_id) do nothing;
+   ```
+
+   > **Do not skip this.** Step 2 fills the staff list from the accounts that
+   > exist *at that moment* — which is none of them, because the login is not
+   > created until step 3. Skip this and you get a page saying **"Not your
+   > panel"** when you sign in: the password is correct and the account simply
+   > is not on the list. Running the statement above fixes it, and it is safe
+   > to run at any time.
+
+5. **Turn off public signup.** Authentication → Sign In / Providers → switch
    off *Allow new users to sign up*.
-5. Restart the dev server and sign in at `/admin/login`.
+6. Restart the dev server and sign in at `/admin/login`.
 
 > **Where the menu lives.** Once there is a single dish in the database, the
 > database *is* the menu — **Admin → Menu** and the website show the same
