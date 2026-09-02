@@ -1,4 +1,5 @@
 import { IMAGE_HOSTS } from './lib/image-hosts.mjs';
+import { publicCsp } from './lib/csp.mjs';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -14,8 +15,9 @@ const nextConfig = {
    * Response headers the site was not sending at all.
    *
    * None of these change how the site behaves; they tell the browser to stop
-   * doing things it will otherwise do by default. The notable absence is a
-   * Content-Security-Policy — see the note at the bottom of this file.
+   * doing things it will otherwise do by default. The Content-Security-Policy
+   * is the one exception and it is built in lib/csp.mjs — see the note at the
+   * bottom of this file for why it is applied here rather than in proxy.ts.
    */
   async headers() {
     const baseline = [
@@ -47,6 +49,21 @@ const nextConfig = {
         // frame, and a blanket DENY tends to be discovered later by whoever
         // tries to embed the menu.
         headers: [...baseline, { key: 'X-Frame-Options', value: 'SAMEORIGIN' }],
+      },
+      {
+        /**
+         * Everything except /admin, which gets its own nonce-based policy
+         * from proxy.ts.
+         *
+         * The exclusion is the important part. Two Content-Security-Policy
+         * headers on one response are not merged, they are both enforced,
+         * and a resource has to satisfy every one of them — so a page
+         * carrying both this and the admin policy would be left with only
+         * what the two have in common, and the panel would stop loading its
+         * own JavaScript. One policy per response, always.
+         */
+        source: '/((?!admin).*)',
+        headers: [{ key: 'Content-Security-Policy', value: publicCsp() }],
       },
       {
         // The admin panel is a different matter. Framing it anywhere is
@@ -90,18 +107,24 @@ const nextConfig = {
 };
 
 /**
- * On the Content-Security-Policy that is deliberately not above.
+ * On where the Content-Security-Policy is set from.
  *
- * A CSP is the one header here that can take the site down rather than
- * merely tighten it. Next.js inlines its own bootstrap and hydration
- * scripts, so a useful policy needs a per-request nonce, which means
- * generating one in proxy.ts and threading it through the document — and
- * proxy.ts currently runs only for /admin, on purpose, so that visitors to
- * the homepage do not pay for a Supabase round trip.
+ * This note used to say a CSP was deliberately absent, because a useful one
+ * needs a per-request nonce, and generating a nonce means running proxy.ts
+ * on every request when it deliberately runs only for /admin.
  *
- * It is worth doing, but it needs its own testing pass against a real
- * deployment rather than being switched on at handover. Until then the
- * headers above cover the attacks that do not need one.
+ * That turned out to be the wrong shape of problem. The blocker is not the
+ * cost of the proxy, it is that a nonce cannot be used on a prerendered
+ * page at all: `/` and `/menu` are static with a one-minute revalidate, so
+ * the nonce would be baked into the cached HTML while the header carried a
+ * fresh one, and every script on the page would be blocked the moment it
+ * was served from cache instead of rebuilt.
+ *
+ * So the policy is split, and each half is set where it can actually be
+ * correct. The public pages take a static policy from here, which costs
+ * nothing and keeps them prerendered. /admin is already dynamic and already
+ * runs proxy.ts, so it takes a real nonce from there. Both are built in
+ * lib/csp.mjs, which carries the reasoning for each directive.
  */
 
 export default nextConfig;
