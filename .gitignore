@@ -4,10 +4,10 @@ out/
 build/
 .DS_Store
 
-# env files — never commit these
-.env
-.env.local
-.env*.local
+# env files — never commit these.
+# .env.example is the checked-in template, so keep that one.
+.env*
+!.env.example
 
 # logs
 npm-debug.log*

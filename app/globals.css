@@ -62,13 +62,6 @@
     color:var(--yellow);
     text-shadow:0 0 6px rgba(255,194,44,.9),0 0 22px rgba(255,194,44,.55),0 0 46px rgba(255,140,20,.35);
   }
-  .flicker{animation:flicker 6s infinite steps(1)}
-  @keyframes flicker{
-    0%,96%,100%{opacity:1}
-    97%{opacity:.55}
-    98%{opacity:1}
-    99%{opacity:.7}
-  }
 
   .btn{
     display:inline-flex;align-items:center;justify-content:center;gap:10px;
@@ -1653,17 +1646,6 @@
 
   /* ============ PREMIUM LAYER ============ */
 
-  /* chrome / metallic display text */
-  .chrome{
-    background:linear-gradient(180deg,#fff 0%,#FFF4E0 32%,#C9BFA8 50%,#FFF9EC 62%,#fff 100%);
-    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 3px 0 rgba(0,0,0,.35)) drop-shadow(0 10px 26px rgba(0,0,0,.5));
-  }
-  .gold{
-    background:linear-gradient(180deg,#FFE9A8 0%,#FFC22C 40%,#C97F0B 56%,#FFD873 74%,#FFF0BE 100%);
-    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 3px 0 rgba(120,70,0,.45)) drop-shadow(0 12px 30px rgba(255,180,40,.35));
-  }
   /* shine sweep across display headings */
   .sweep{position:relative;overflow:hidden;display:inline-block}
   .sweep::after{
