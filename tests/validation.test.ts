@@ -25,7 +25,7 @@ function goodBooking(over: Record<string, string> = {}): FormData {
     phone: '081 234 5678',
     email: 'somchai@example.com',
     date: '2026-09-01',
-    time: 'Dinner',
+    time: '7:00 PM',
     guests: '4',
     notes: 'Window table if you have one',
     ...over,
@@ -36,6 +36,46 @@ function goodBooking(over: Record<string, string> = {}): FormData {
 
 /** Fixed "now" so these tests don't start failing in September. */
 const NOW = new Date('2026-08-18T04:00:00Z'); // 11:00 in Bangkok
+
+describe('the table times offered', () => {
+  /**
+   * These are generated from the opening hours rather than typed out, so
+   * these tests are what stop a change to those three numbers quietly
+   * offering tables at four in the morning.
+   */
+  it('runs from opening to an hour before closing, in half hours', () => {
+    expect(BOOKING_TIMES[0]).toBe('9:00 AM');
+    expect(BOOKING_TIMES[BOOKING_TIMES.length - 1]).toBe('11:00 PM');
+    expect(BOOKING_TIMES).toHaveLength(29);
+  });
+
+  it('turns midday and midnight into the hours people say', () => {
+    // 12-hour clocks have no 0 o'clock, and "12:00 PM" is noon, not midnight.
+    expect(BOOKING_TIMES).toContain('12:00 PM');
+    expect(BOOKING_TIMES).toContain('12:30 PM');
+    expect(BOOKING_TIMES).not.toContain('0:00 PM');
+    expect(BOOKING_TIMES).not.toContain('13:00 PM');
+  });
+
+  it('offers no time outside opening hours', () => {
+    expect(BOOKING_TIMES).not.toContain('8:30 AM');
+    expect(BOOKING_TIMES).not.toContain('11:30 PM');
+    expect(BOOKING_TIMES).not.toContain('12:00 AM');
+  });
+
+  it('no longer offers the old sittings', () => {
+    for (const old of ['Breakfast', 'Lunch', 'Afternoon', 'Dinner', 'Late']) {
+      expect(BOOKING_TIMES).not.toContain(old);
+    }
+  });
+
+  it('refuses a sitting name now that times are real', () => {
+    // Bookings already in the database still read "Dinner" — that is display
+    // text on an existing row. What must not happen is a new one arriving.
+    const res = validateBooking(goodBooking({ time: 'Dinner' }), NOW);
+    expect(res.ok).toBe(false);
+  });
+});
 
 describe('validateBooking', () => {
   it('accepts a complete, sensible booking', () => {

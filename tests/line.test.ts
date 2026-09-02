@@ -96,7 +96,7 @@ function invalid(msg: any): string[] {
 const GUEST = {
   name: 'Somchai Jaidee',
   date: 'Friday, 21 August 2026',
-  time: 'Dinner',
+  time: '7:00 PM',
   guests: '4',
   phone: '081 234 5678',
   email: 'somchai@example.com',

@@ -646,7 +646,7 @@ export function testLineMessage(): LineMessage {
     d: {
       name: 'Somchai (test)',
       date: 'Friday, 21 August 2026',
-      time: 'Dinner',
+      time: '7:00 PM',
       guests: '4',
       phone: '081 234 5678',
     },

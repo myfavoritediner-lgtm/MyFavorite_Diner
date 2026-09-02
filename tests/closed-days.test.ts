@@ -33,7 +33,7 @@ function booking(over: Record<string, string> = {}): FormData {
     phone: '081 234 5678',
     email: 'somchai@example.com',
     date: '2026-09-01',
-    time: 'Dinner',
+    time: '7:00 PM',
     guests: '4',
     ...over,
   };

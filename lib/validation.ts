@@ -19,14 +19,49 @@ export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** The sittings offered on the booking form. */
-export const BOOKING_TIMES = [
-  'Breakfast',
-  'Lunch',
-  'Afternoon',
-  'Dinner',
-  'Late',
-] as const;
+/* ------------------------------------------------------------------ */
+/* the times a table can be booked for                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The diner opens at 9am and closes at midnight, so tables run from 9:00
+ * to 11:00 in half hours — an hour before closing for the last one.
+ *
+ * These used to be sittings: Breakfast, Lunch, Afternoon, Dinner, Late.
+ * Which is fine for a kitchen and no use at all to a guest, who knows what
+ * time they want to eat and not which of five words the diner files it
+ * under. It also left staff guessing whether "Dinner" meant six or nine.
+ *
+ * If the opening hours change, change these three numbers. They are not
+ * read from the `hours` setting on purpose: that setting is free text so
+ * the owner can write "9am – midnight" or "9:00-24:00" or anything else,
+ * and guessing table times out of prose is not worth the failure mode.
+ */
+const FIRST_TABLE_MINUTES = 9 * 60; //  9:00
+const LAST_TABLE_MINUTES = 23 * 60; // 23:00
+const TABLE_STEP_MINUTES = 30;
+
+/** 570 -> "9:30 AM". Twelve-hour, because that is how the hours are shown. */
+function clockLabel(minutesFromMidnight: number): string {
+  const hour24 = Math.floor(minutesFromMidnight / 60);
+  const minute = minutesFromMidnight % 60;
+  const suffix = hour24 < 12 ? 'AM' : 'PM';
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return `${hour12}:${String(minute).padStart(2, '0')} ${suffix}`;
+}
+
+/** The times offered on the booking form, and the only ones accepted. */
+export const BOOKING_TIMES: readonly string[] = (() => {
+  const times: string[] = [];
+  for (
+    let m = FIRST_TABLE_MINUTES;
+    m <= LAST_TABLE_MINUTES;
+    m += TABLE_STEP_MINUTES
+  ) {
+    times.push(clockLabel(m));
+  }
+  return times;
+})();
 
 /** The party sizes offered on the booking form. */
 export const BOOKING_GUESTS = [
@@ -224,7 +259,7 @@ export function validateBooking(
     return fail('Please enter a phone number we can reach you on.');
   }
 
-  if (!(BOOKING_TIMES as readonly string[]).includes(booking_time)) {
+  if (!BOOKING_TIMES.includes(booking_time)) {
     return fail('Please choose one of the times offered.');
   }
 

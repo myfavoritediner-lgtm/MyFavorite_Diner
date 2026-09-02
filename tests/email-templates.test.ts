@@ -30,7 +30,7 @@ const brand: BrandInfo = {
 const booking = {
   name: 'Somchai Prasert',
   date: 'Tuesday, 1 September 2026',
-  time: 'Dinner',
+  time: '7:00 PM',
   guests: '4',
   phone: '081 234 5678',
 };
