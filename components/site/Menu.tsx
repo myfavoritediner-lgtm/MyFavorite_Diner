@@ -23,6 +23,18 @@ const baht = (n: number) =>
  */
 const MIN_TO_LOOP = 5;
 
+/**
+ * The gap between two cards, read from the stylesheet rather than repeated
+ * here. It is 20px on desktop and narrower on phones, and a step built from
+ * the wrong one leaves the rail a few pixels short of where it should be —
+ * every arrow press and every autoplay tick adding to the error until the
+ * cards no longer line up with the rail at all.
+ */
+function railGap(el: HTMLElement) {
+  const gap = parseFloat(getComputedStyle(el).columnGap);
+  return Number.isFinite(gap) ? gap : 20;
+}
+
 /** A small icon per category, matched on the slug or its name. */
 const ICONS = {
   sundae: (
@@ -140,12 +152,24 @@ export default function Menu({ menu }: { menu: MenuData }) {
     }
 
     const mid = el.scrollLeft + el.clientWidth / 2;
-    el.querySelectorAll<HTMLElement>('.card').forEach((card) => {
+    const cards = el.querySelectorAll<HTMLElement>('.card');
+
+    // How far a card sits from the middle is counted in cards, not in
+    // fractions of the rail. The rail is 1152px on a desktop and around a
+    // third of that on a phone, so dividing by its width made the same
+    // numbers mean something quite different on each: on a phone the very
+    // first neighbour already landed on the floor of both clamps, leaving one
+    // sharp card and a row of uniformly shrunken, faded ones that snapped
+    // between the two states as you swiped. Counting in cards gives the same
+    // gentle falloff at every width — these coefficients are the desktop
+    // ones, rescaled by the card step they were originally tuned against.
+    const step = (cards[0]?.offsetWidth ?? 0) + railGap(el);
+
+    cards.forEach((card) => {
       const cardMid = card.offsetLeft + card.offsetWidth / 2;
-      const dist = Math.abs(mid - cardMid) / el.clientWidth;
-      const scale = Math.max(0.9, 1 - dist * 0.16);
-      card.style.setProperty('--sc', scale.toFixed(3));
-      card.style.setProperty('--op', String(Math.max(0.62, 1 - dist * 0.7)));
+      const away = step > 0 ? Math.abs(mid - cardMid) / step : 0;
+      card.style.setProperty('--sc', Math.max(0.9, 1 - away * 0.043).toFixed(3));
+      card.style.setProperty('--op', Math.max(0.62, 1 - away * 0.188).toFixed(3));
     });
   }, [looping]);
 
@@ -160,7 +184,7 @@ export default function Menu({ menu }: { menu: MenuData }) {
       const el = railRef.current;
       if (!el) return;
       const card = el.querySelector<HTMLElement>('.card');
-      const step = card ? card.offsetWidth + 20 : el.clientWidth * 0.8;
+      const step = card ? card.offsetWidth + railGap(el) : el.clientWidth * 0.8;
 
       // Cross the seam before the glide starts rather than in the middle of
       // it. Moving by exactly half a lap lands on an identical card, so this
@@ -354,7 +378,7 @@ export default function Menu({ menu }: { menu: MenuData }) {
           </button>
 
           <div
-            className="dishes"
+            className={`dishes${looping ? '' : ' ends'}`}
             ref={railRef}
             onScroll={schedule}
             role="group"

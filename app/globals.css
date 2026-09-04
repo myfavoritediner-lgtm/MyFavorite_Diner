@@ -1806,13 +1806,37 @@
     .tab{font-size:13.5px;padding:11px 18px;border-width:2.5px;letter-spacing:.1em;gap:7px}
     .tab svg{width:18px;height:18px}
     .tabs-wrap{margin-bottom:30px}
-    /* phones: one card at a time, arrows out of the way */
-    .card{flex-basis:78vw;max-width:320px}
-    .dishes{gap:14px}
-    .rail-arrow{width:44px;height:44px;top:34%}
-    .rail-arrow.left{left:-6px}
-    .rail-arrow.right{right:-6px}
-    .rail-wrap::before,.rail-wrap::after{width:24px}
+    /* Phones: one card at a time, with the arrows either side of it.
+       The card and the arrows were competing for the same strip of gutter.
+       At 78vw against a 14px gap the gutter came to roughly 23px a side, so
+       a 44px arrow hung 6px off the rail could not fit in it and sat 13px
+       onto the card face, while the sliver of the next card left underneath
+       came to about nine pixels — too narrow to read as a card, and covered
+       by the arrow and the edge fade in any case. The rail looked as though
+       it were slicing its cards in half.
+
+       So the gutter is widened to fit an arrow properly: 72vw leaves about
+       35px a side at 390px, and a 40px arrow hung 14px off the rail reaches
+       26px in, clearing the card with room to spare at every phone width
+       down to 320px. The arrows sit beside the dish rather than on it, and
+       the next card shows between them as the rail moves. */
+    .card{flex-basis:72vw;max-width:320px}
+    .dishes{gap:12px}
+    .rail-arrow{width:40px;height:40px;top:34%}
+    .rail-arrow svg{width:20px;height:20px}
+    .rail-arrow.left{left:-14px}
+    .rail-arrow.right{right:-14px}
+    .rail-wrap::before,.rail-wrap::after{width:14px}
+
+    /* A rail too short to loop has a real first and last card, and snap
+       centring cannot reach either without room to scroll into — the first
+       dish sat jammed against the left edge, off-centre and dimmed by the
+       focus effect for it. Looping rails must never get this: their
+       wrap-around assumes the scroll width is exactly two laps. */
+    .dishes.ends{
+      padding-left:calc((100% - min(72vw,320px)) / 2);
+      padding-right:calc((100% - min(72vw,320px)) / 2);
+    }
     .gal{grid-template-columns:1fr;grid-auto-rows:210px}
     .shot-card.big,.shot-card.wide{grid-column:span 1;grid-row:span 1}
     .foot{grid-template-columns:1fr;gap:34px}
@@ -1902,4 +1926,10 @@
     .card-body{padding:18px 18px 20px}
     .card h3{font-size:19px}
     .card .price{padding:11px 26px;font-size:17px}
+    /* The gutter narrows with the screen, so the arrow has to give way
+       before the card does — a 40px one still caught the card edge on a
+       320px phone. Shrinking the button rather than the dish keeps the
+       names and descriptions their full width. */
+    .rail-arrow{width:36px;height:36px}
+    .rail-arrow svg{width:18px;height:18px}
   }
